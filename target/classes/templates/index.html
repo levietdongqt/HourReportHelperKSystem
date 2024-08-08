@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Helper</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script>
+        function toggleInputs(value) {
+            let fourInputs = document.getElementById('fourInputs');
+            let eightInputs = document.getElementById('eightInputs');
+
+            if (value === '4') {
+                fourInputs.style.display = 'block';
+                eightInputs.style.display = 'none';
+            } else if (value === '8') {
+                fourInputs.style.display = 'none';
+                eightInputs.style.display = 'block';
+            }
+            else {
+                fourInputs.style.display = 'block';
+                eightInputs.style.display = 'block';
+            }
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <hr/>
+
+    <form action="#" th:action="@{/submit}" th:object="${form}" method="post">
+        <h4 > EMPLOYEE NAME</h4>
+        <div>
+            <input class="form-control" style="width: 200px"  type="text" th:field="*{employeeName}" placeholder="...."/>
+        </div>
+
+        <h4 > Pick time report</h4>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="choice" value="4" onchange="toggleInputs(this.value)" />
+            <label class="form-check-label" >
+                Morning
+            </label>
+            <br>
+            <input class="form-check-input" type="radio" name="choice" value="8" onchange="toggleInputs(this.value)"/>
+            <label class="form-check-label" >
+                Afternoon
+            </label>
+            <br>
+            <input class="form-check-input"  type="radio" name="choice" value="12" onchange="toggleInputs(this.value)" checked>
+            ALL DAY
+        </div>
+        <h2 class="text-center">REPORT DETAILS</h2>
+        <div id="fourInputs" style="display:block;">
+            <label class="form-label bold">8H-9H</label>
+            <div>
+                <input  class="form-control" type="text" th:field="*{descriptions[0]}" placeholder="...."/>
+            </div>
+            <br>
+
+            <label class="form-label bold">9H-10H</label>
+            <div>
+                <input  class="form-control"  type="text" th:field="*{descriptions[1]}" placeholder="...."/>
+            </div>
+
+            <br>
+            <label class="form-label bold">10-11H</label>
+            <div>
+                <input  class="form-control" type="text" th:field="*{descriptions[2]}" placeholder="...."/>
+            </div>
+
+            <br>
+            <label class="form-label bold">11-12H</label>
+            <div>
+                <input  class="form-control" type="text" th:field="*{descriptions[3]}" placeholder="...."/>
+            </div>
+        </div>
+
+        <div id="eightInputs" style="display:block;">
+            <br>
+            <label class="form-label bold">13-14H</label>
+            <div>
+                <input  class="form-control" type="text" th:field="*{descriptions[4]}" placeholder="...."/>
+            </div>
+
+            <br>
+            <label class="form-label bold">14-15H</label>
+            <div>
+                <input  class="form-control" type="text" th:field="*{descriptions[5]}" placeholder="...."/>
+            </div>
+
+            <br>
+            <label class="form-label bold">15-16H</label>
+            <div>
+                <input  class="form-control" type="text" th:field="*{descriptions[6]}" placeholder="...."/>
+            </div>
+
+            <br>
+            <label class="form-label bold">16-17H</label>
+            <div>
+                <input  class="form-control" type="text" th:field="*{descriptions[7]}" placeholder="...."/>
+            </div>
+        </div>
+<br>
+        <div>
+            <button type="submit" class="btn btn-primary">Download report</button>
+        </div>
+    </form>
+
+
+</div>
+>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+
+</body>
+</html>
