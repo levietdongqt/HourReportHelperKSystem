@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -30,14 +29,14 @@ public class HomeController {
     }
 
     @PostMapping("/submit")
-    public String submitForm(@ModelAttribute InputForm form, Model model, HttpServletResponse response) throws IOException {
+    public String submitForm(@ModelAttribute InputForm form) throws IOException {
 
         DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyyMMdd");
         LocalDate now = LocalDate.now();
         String currentDate = now.format(formatter2);
 
-        HashMap<Integer, String> reportTime = new HashMap<Integer, String>();
+        HashMap<Integer, String> reportTime = new HashMap<>();
         reportTime.put(0, "09");
         reportTime.put(1, "10");
         reportTime.put(2, "11");
@@ -47,7 +46,7 @@ public class HomeController {
         reportTime.put(6, "16");
         reportTime.put(7, "17");
 
-        HashMap<Integer, String> startTime = new HashMap<Integer, String>();
+        HashMap<Integer, String> startTime = new HashMap<>();
         startTime.put(0, "08:15");
         startTime.put(1, "09:00");
         startTime.put(2, "10:00");
