@@ -9,6 +9,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,7 +22,9 @@ import java.util.HashMap;
 @Controller
 public class HomeController {
     @GetMapping("/")
-    public String showForm(Model model) {
+    public String showForm(Model model,@RequestParam(value = "success", required = false) String success) {
+        boolean isShowSuccess = success != null;
+        model.addAttribute("isShowSuccess", isShowSuccess);
         model.addAttribute("form", new InputForm());
         return "index";
     }
@@ -54,14 +57,18 @@ public class HomeController {
         startTime.put(6, "15:00");
         startTime.put(7, "16:00");
         String fileNameTemp = "Hour Report_DevHCM_" + form.getEmployeeName() + "_" + currentDate + "_";
+        File parentDir = null;
         for (int i = 0; i < 8; i++) {
             if (form.getDescriptions().get(i).isEmpty()) continue;
 
             String fileName = fileNameTemp + reportTime.get(i) + "H" + ".xlsx";
-            String location = "D:/HourReport/" + fileName;
+            String location = "D:/HourReport/" + currentDate + "/" + fileName;
             File file = new File(location);
-            File parentDir = file.getParentFile();
+            parentDir = file.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
+                if (parentDir.getParentFile().exists() && parentDir.getParentFile() != null) {
+                    parentDir.getParentFile().mkdirs();
+                }
                 parentDir.mkdirs();
             }
             try (XSSFWorkbook workbook = new XSSFWorkbook();) {
@@ -69,7 +76,6 @@ public class HomeController {
                 Row headerRow = sheet.createRow(0);
 
                 CellStyle cellStyle = workbook.createCellStyle();
-
                 // Căn giữa theo chiều ngang và chiều dọc
                 cellStyle.setAlignment(HorizontalAlignment.CENTER);
                 cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
@@ -80,7 +86,9 @@ public class HomeController {
                 Cell cell = headerRow.createCell(3);
                 cell.setCellValue("Job Content");
                 cell.setCellStyle(cellStyle);
-                headerRow.createCell(4).setCellValue("Completed Y/N");
+                Cell cellComplate = headerRow.createCell(4);
+                cellComplate.setCellStyle(cellStyle);
+                cellComplate.setCellValue("Completed Y/N");
                 headerRow.createCell(5).setCellValue("Completing time");
                 headerRow.createCell(6).setCellValue("Remark");
 
@@ -95,13 +103,13 @@ public class HomeController {
 
                 for (int rowNum = 0; rowNum <= 7; rowNum++) {
                     if (rowNum > i) break;
-
+                    boolean isCompleted = form.getIsCompletes().get(rowNum) != null;
                     Row row = sheet.createRow(rowNum + 1);
                     row.createCell(0).setCellValue(LocalDate.now().format(formatter1));
                     row.createCell(1).setCellValue(reportTime.get(rowNum));
                     row.createCell(2).setCellValue(startTime.get(rowNum));
                     row.createCell(3).setCellValue(form.getDescriptions().get(rowNum));
-                    row.createCell(4).setCellValue("Y");
+                    row.createCell(4).setCellValue(isCompleted ? "Y" : "N");
                     row.createCell(5).setCellValue(reportTime.get(rowNum) + ":00");
 
                 }
@@ -109,7 +117,6 @@ public class HomeController {
                 workbook.write(fos);
             }
         }
-
-        return "redirect:/";
+        return "redirect:/?success=true";
     }
 }

@@ -10,6 +10,7 @@ import java.util.List;
 public class InputForm {
     private String employeeName;
     private List<String> descriptions;
+    private List<String> isCompletes;
     private String description_10H;
     private String description_11H;
     private String description_12H;

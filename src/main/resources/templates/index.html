@@ -29,84 +29,139 @@
 
 <div class="container">
     <hr/>
-
-    <form action="#" th:action="@{/submit}" th:object="${form}" method="post">
-        <h4 > EMPLOYEE NAME</h4>
-        <div>
-            <input class="form-control" style="width: 200px"  type="text" th:field="*{employeeName}" placeholder="...."/>
+    <div th:if="${isShowSuccess}">
+        <div class="alert alert-success" role="alert">
+            Reports has been downloaded at D:\HourReport
         </div>
-
-        <h4 > Pick time report</h4>
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="choice" value="4" onchange="toggleInputs(this.value)" />
-            <label class="form-check-label" >
-                Morning
-            </label>
-            <br>
-            <input class="form-check-input" type="radio" name="choice" value="8" onchange="toggleInputs(this.value)"/>
-            <label class="form-check-label" >
-                Afternoon
-            </label>
-            <br>
-            <input class="form-check-input"  type="radio" name="choice" value="12" onchange="toggleInputs(this.value)" checked>
-            ALL DAY
-        </div>
-        <h2 class="text-center">REPORT DETAILS</h2>
-        <div id="fourInputs" style="display:block;">
-            <label class="form-label bold">8H-9H</label>
+    </div>
+    <div th:if="${!isShowSuccess}">
+        <form action="#" th:action="@{/submit}" th:object="${form}" method="post">
+            <h4 > EMPLOYEE NAME</h4>
             <div>
-                <input  class="form-control" type="text" th:field="*{descriptions[0]}" placeholder="...."/>
-            </div>
-            <br>
-
-            <label class="form-label bold">9H-10H</label>
-            <div>
-                <input  class="form-control"  type="text" th:field="*{descriptions[1]}" placeholder="...."/>
+                <input class="form-control" style="width: 200px"  type="text" th:field="*{employeeName}" placeholder="LeVietDong" />
             </div>
 
-            <br>
-            <label class="form-label bold">10-11H</label>
-            <div>
-                <input  class="form-control" type="text" th:field="*{descriptions[2]}" placeholder="...."/>
+            <!--        <h4 > Pick time report</h4>-->
+            <!--        <div class="form-check">-->
+            <!--            <input class="form-check-input" type="radio" name="choice" value="4" onchange="toggleInputs(this.value)" />-->
+            <!--            <label class="form-check-label" >-->
+            <!--                Morning-->
+            <!--            </label>-->
+            <!--            <br>-->
+            <!--            <input class="form-check-input" type="radio" name="choice" value="8" onchange="toggleInputs(this.value)"/>-->
+            <!--            <label class="form-check-label" >-->
+            <!--                Afternoon-->
+            <!--            </label>-->
+            <!--            <br>-->
+            <!--            <input class="form-check-input"  type="radio" name="choice" value="12" onchange="toggleInputs(this.value)" checked>-->
+            <!--            ALL DAY-->
+            <!--        </div>-->
+            <h2 class="text-center">REPORT DETAILS</h2>
+            <div id="fourInputs" style="display:block;">
+                <label class="form-label bold">8H-9H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[0]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control" type="text" th:field="*{descriptions[0]}" placeholder=".... " required/>
+                </div>
+                <br>
+
+                <label class="form-label bold">9H-10H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[1]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control"  type="text" th:field="*{descriptions[1]}" placeholder="...." required/>
+                </div>
+
+                <br>
+                <label class="form-label bold">10-11H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[2]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control" type="text" th:field="*{descriptions[2]}" placeholder="...." required/>
+                </div>
+
+                <br>
+                <label class="form-label bold">11-12H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[3]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control" type="text" th:field="*{descriptions[3]}" placeholder="...." required/>
+                </div>
             </div>
 
-            <br>
-            <label class="form-label bold">11-12H</label>
-            <div>
-                <input  class="form-control" type="text" th:field="*{descriptions[3]}" placeholder="...."/>
-            </div>
-        </div>
+            <div id="eightInputs" style="display:block;">
+                <br>
+                <label class="form-label bold">13-14H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[4]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control" type="text" th:field="*{descriptions[4]}" placeholder="...." required/>
+                </div>
 
-        <div id="eightInputs" style="display:block;">
-            <br>
-            <label class="form-label bold">13-14H</label>
-            <div>
-                <input  class="form-control" type="text" th:field="*{descriptions[4]}" placeholder="...."/>
-            </div>
+                <br>
+                <label class="form-label bold">14-15H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[5]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control" type="text" th:field="*{descriptions[5]}" placeholder="...." required/>
+                </div>
 
-            <br>
-            <label class="form-label bold">14-15H</label>
-            <div>
-                <input  class="form-control" type="text" th:field="*{descriptions[5]}" placeholder="...."/>
-            </div>
+                <br>
+                <label class="form-label bold">15-16H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[6]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control" type="text" th:field="*{descriptions[6]}" placeholder="...." required/>
+                </div>
 
-            <br>
-            <label class="form-label bold">15-16H</label>
-            <div>
-                <input  class="form-control" type="text" th:field="*{descriptions[6]}" placeholder="...."/>
+                <br>
+                <label class="form-label bold">16-17H</label>
+                <div class="form-check">
+                    <input  class="form-check-input" type="checkbox" value="y" th:value="y" th:field="*{isCompletes[7]}" checked>
+                    <label class="form-check-label" >
+                        Is Completed?
+                    </label>
+                </div>
+                <div>
+                    <input  class="form-control" type="text" th:field="*{descriptions[7]}" placeholder="...." required/>
+                </div>
             </div>
+            <br>
+            <div>
+                <button type="submit" class="btn btn-primary">Download report</button>
+            </div>
+        </form>
+    </div>
 
-            <br>
-            <label class="form-label bold">16-17H</label>
-            <div>
-                <input  class="form-control" type="text" th:field="*{descriptions[7]}" placeholder="...."/>
-            </div>
-        </div>
-<br>
-        <div>
-            <button type="submit" class="btn btn-primary">Download report</button>
-        </div>
-    </form>
 
 
 </div>
