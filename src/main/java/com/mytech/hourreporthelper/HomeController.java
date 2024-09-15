@@ -73,12 +73,11 @@ public class HomeController {
             try (XSSFWorkbook workbook = new XSSFWorkbook();) {
                 Sheet sheet = workbook.createSheet("Sheet 1");
                 Row headerRow = sheet.createRow(0);
-
                 CellStyle cellStyle = workbook.createCellStyle();
                 // Căn giữa theo chiều ngang và chiều dọc
                 cellStyle.setAlignment(HorizontalAlignment.CENTER);
                 cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-
+                cellStyle.setWrapText(true);
                 headerRow.createCell(0).setCellValue("Report Date");
                 headerRow.createCell(1).setCellValue("Report time");
                 headerRow.createCell(2).setCellValue("Starting time");
@@ -104,13 +103,25 @@ public class HomeController {
                     if (rowNum > i) break;
                     boolean isCompleted = form.getIsCompletes().get(rowNum) != null;
                     Row row = sheet.createRow(rowNum + 1);
+
+                    String description = form.getDescriptions().get(rowNum);
+                    int numberOfLines  = description.split("\n").length;
+                    row.setHeightInPoints(numberOfLines * sheet.getDefaultRowHeightInPoints());
                     row.createCell(0).setCellValue(LocalDate.now().format(formatter1));
                     row.createCell(1).setCellValue(reportTime.get(rowNum));
                     row.createCell(2).setCellValue(startTime.get(rowNum));
-                    row.createCell(3).setCellValue(form.getDescriptions().get(rowNum));
-                    row.createCell(4).setCellValue(isCompleted ? "Y" : "N");
-                    row.createCell(5).setCellValue(reportTime.get(rowNum) + ":00");
 
+                    Cell jobContentCell = row.createCell(3);
+
+                    CellStyle cellStyle2 = workbook.createCellStyle();
+                    cellStyle2.setAlignment(HorizontalAlignment.LEFT);
+                    cellStyle2.setWrapText(true);
+                    jobContentCell.setCellStyle(cellStyle2);
+                    jobContentCell.setCellValue(description);
+
+                    row.createCell(4).setCellValue(isCompleted ? "Y" : "N");
+                    row.createCell(5).setCellValue(isCompleted? reportTime.get(rowNum) + ":00" : "");
+                    row.createCell(6).setCellValue(form.getRemarks().get(rowNum));
                 }
                 FileOutputStream fos = new FileOutputStream(file);
                 workbook.write(fos);
