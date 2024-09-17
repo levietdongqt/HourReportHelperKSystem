@@ -120,7 +120,7 @@ public class HomeController {
                     jobContentCell.setCellValue(description);
 
                     row.createCell(4).setCellValue(isCompleted ? "Y" : "N");
-                    row.createCell(5).setCellValue(isCompleted? reportTime.get(rowNum) + ":00" : "");
+                    row.createCell(5).setCellValue(form.completingTimes.get(rowNum).isEmpty() ? "" : form.completingTimes.get(rowNum));
                     row.createCell(6).setCellValue(form.getRemarks().get(rowNum));
                 }
                 FileOutputStream fos = new FileOutputStream(file);
