@@ -119,10 +119,19 @@ public class HomeController {
                     jobContentCell.setCellStyle(cellStyle2);
                     jobContentCell.setCellValue(description);
 
-                    row.createCell(4).setCellValue(isCompleted ? "Y" : "N");
-                    row.createCell(5).setCellValue(form.completingTimes.get(rowNum).isEmpty() ? "" : form.completingTimes.get(rowNum));
-                    row.createCell(6).setCellValue(form.getRemarks().get(rowNum));
+                    Cell cellComplete = row.createCell(4);
+                    cellComplete.setCellStyle(cellStyle2);
+                    cellComplete.setCellValue(isCompleted ? "Y" : "N");
+
+                    Cell cell1 = row.createCell(5);
+                    cell1.setCellStyle(cellStyle2);
+                    cell1.setCellValue(form.completingTimes.get(rowNum).isEmpty() ? "" : form.completingTimes.get(rowNum));
+
+                    Cell cell2 = row.createCell(6);
+                    cell2.setCellStyle(cellStyle2);
+                    cell2.setCellValue(form.getRemarks().get(rowNum));
                 }
+
                 FileOutputStream fos = new FileOutputStream(file);
                 workbook.write(fos);
             }
