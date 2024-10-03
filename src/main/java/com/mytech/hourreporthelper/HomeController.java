@@ -21,9 +21,10 @@ import java.util.HashMap;
 @Controller
 public class HomeController {
     @GetMapping("/")
-    public String showForm(Model model,@RequestParam(value = "success", required = false) String success) {
+    public String showForm(Model model, @RequestParam(value = "success", required = false) String success) {
         boolean isShowSuccess = success != null;
         model.addAttribute("isShowSuccess", isShowSuccess);
+        model.addAttribute("now", LocalDate.now());
         model.addAttribute("form", new InputForm());
         return "index";
     }
@@ -33,7 +34,7 @@ public class HomeController {
 
         DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyyMMdd");
-        LocalDate now = LocalDate.now();
+        LocalDate now = form.getReportDate();
         String currentDate = now.format(formatter2);
 
         HashMap<Integer, String> reportTime = new HashMap<>();
@@ -73,25 +74,17 @@ public class HomeController {
             try (XSSFWorkbook workbook = new XSSFWorkbook();) {
                 Sheet sheet = workbook.createSheet("Sheet 1");
                 Row headerRow = sheet.createRow(0);
-                CellStyle cellStyle = workbook.createCellStyle();
-                // Căn giữa theo chiều ngang và chiều dọc
-                cellStyle.setAlignment(HorizontalAlignment.CENTER);
-                cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-                cellStyle.setWrapText(true);
-                headerRow.createCell(0).setCellValue("Report Date");
-                headerRow.createCell(1).setCellValue("Report time");
-                headerRow.createCell(2).setCellValue("Starting time");
-                Cell cell = headerRow.createCell(3);
-                cell.setCellValue("Job Content");
-                cell.setCellStyle(cellStyle);
-                Cell cellComplate = headerRow.createCell(4);
-                cellComplate.setCellStyle(cellStyle);
-                cellComplate.setCellValue("Completed Y/N");
-                headerRow.createCell(5).setCellValue("Completing time");
-                headerRow.createCell(6).setCellValue("Remark");
+                CellStyle cellStyle = getCellStyleForHeader(workbook);
+
+                Cell cell0 = handleCellString(headerRow, 0, cellStyle, "ReportDate");
+                Cell cell1 = handleCellString(headerRow, 1, cellStyle, "Report time");
+                Cell cell2 = handleCellString(headerRow, 2, cellStyle, "Starting time");
+                Cell cell3 = handleCellString(headerRow, 3, cellStyle, "Job Content");
+                Cell cell4 = handleCellString(headerRow, 4, cellStyle, "Completed Y/N");
+                Cell cell5 = handleCellString(headerRow, 5, cellStyle, "Completing time");
+                Cell cell6 = handleCellString(headerRow, 6, cellStyle, "Remark");
 
                 sheet.setColumnWidth(1, 3200); // Độ rộng của cột B
-
                 sheet.setColumnWidth(3, 32000); // Độ rộng của cột B
                 sheet.setColumnWidth(0, 3200); // Độ rộng của cột B
                 sheet.setColumnWidth(2, 3200); // Độ rộng của cột B
@@ -105,17 +98,24 @@ public class HomeController {
                     Row row = sheet.createRow(rowNum + 1);
 
                     String description = form.getDescriptions().get(rowNum);
-                    int numberOfLines  = description.split("\n").length;
+                    int numberOfLines = description.split("\n").length;
                     row.setHeightInPoints(numberOfLines * sheet.getDefaultRowHeightInPoints());
-                    row.createCell(0).setCellValue(LocalDate.now().format(formatter1));
-                    row.createCell(1).setCellValue(reportTime.get(rowNum));
-                    row.createCell(2).setCellValue(startTime.get(rowNum));
+
+                    CellStyle cellStyle2 = getCelStyleForData(workbook);
+
+                    Cell cellR0 = row.createCell(0);
+                    cellR0.setCellStyle(cellStyle2);
+                    cellR0.setCellValue(form.getReportDate().format(formatter1));
+
+                    Cell cellR1 = row.createCell(1);
+                    cellR1.setCellStyle(cellStyle2);
+                    cellR1.setCellValue(reportTime.get(rowNum));
+
+                    Cell cellR2 = row.createCell(2);
+                    cellR2.setCellStyle(cellStyle2);
+                    cellR2.setCellValue(startTime.get(rowNum));
 
                     Cell jobContentCell = row.createCell(3);
-
-                    CellStyle cellStyle2 = workbook.createCellStyle();
-                    cellStyle2.setAlignment(HorizontalAlignment.LEFT);
-                    cellStyle2.setWrapText(true);
                     jobContentCell.setCellStyle(cellStyle2);
                     jobContentCell.setCellValue(description);
 
@@ -123,13 +123,13 @@ public class HomeController {
                     cellComplete.setCellStyle(cellStyle2);
                     cellComplete.setCellValue(isCompleted ? "Y" : "N");
 
-                    Cell cell1 = row.createCell(5);
-                    cell1.setCellStyle(cellStyle2);
-                    cell1.setCellValue(form.completingTimes.get(rowNum).isEmpty() ? "" : form.completingTimes.get(rowNum));
+                    Cell cellR5 = row.createCell(5);
+                    cellR5.setCellStyle(cellStyle2);
+                    cellR5.setCellValue(form.completingTimes.get(rowNum).isEmpty() ? "" : form.completingTimes.get(rowNum));
 
-                    Cell cell2 = row.createCell(6);
-                    cell2.setCellStyle(cellStyle2);
-                    cell2.setCellValue(form.getRemarks().get(rowNum));
+                    Cell cellR6 = row.createCell(6);
+                    cellR6.setCellStyle(cellStyle2);
+                    cellR6.setCellValue(form.getRemarks().get(rowNum));
                 }
 
                 FileOutputStream fos = new FileOutputStream(file);
@@ -137,5 +137,36 @@ public class HomeController {
             }
         }
         return "redirect:/?success=true";
+    }
+
+    private static Cell handleCellString(Row headerRow, int col, CellStyle cellStyle, String value) {
+        Cell cell0 = headerRow.createCell(col);
+        cell0.setCellStyle(cellStyle);
+        cell0.setCellValue(value);
+        return cell0;
+    }
+
+    private static CellStyle getCellStyleForHeader(XSSFWorkbook workbook) {
+        CellStyle cellStyle = workbook.createCellStyle();
+        cellStyle.setBorderTop(BorderStyle.THIN);      // Viền trên
+        cellStyle.setBorderBottom(BorderStyle.THIN);   // Viền dưới
+        cellStyle.setBorderLeft(BorderStyle.THIN);     // Viền trái
+        cellStyle.setBorderRight(BorderStyle.THIN);    //
+        // Căn giữa theo chiều ngang và chiều dọc
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle.setWrapText(true);
+        return cellStyle;
+    }
+
+    private static CellStyle getCelStyleForData(XSSFWorkbook workbook) {
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setAlignment(HorizontalAlignment.LEFT);
+        cellStyle2.setWrapText(true);
+        cellStyle2.setBorderTop(BorderStyle.THIN);      // Viền trên
+        cellStyle2.setBorderBottom(BorderStyle.THIN);   // Viền dưới
+        cellStyle2.setBorderLeft(BorderStyle.THIN);     // Viền trái
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        return cellStyle2;
     }
 }

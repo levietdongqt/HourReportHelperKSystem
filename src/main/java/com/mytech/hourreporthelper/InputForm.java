@@ -3,6 +3,7 @@ package com.mytech.hourreporthelper;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +34,7 @@ public class InputForm {
     private List<String> descriptions;
     private List<String> isCompletes;
     private ArrayList<String> remarks;
+    private LocalDate reportDate = LocalDate.now();
     private String description_10H;
     private String description_11H;
     private String description_12H;
