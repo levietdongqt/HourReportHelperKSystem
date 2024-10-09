@@ -36,24 +36,98 @@
 <body>
 
 <div class="container">
+    <script th:inline="javascript">
+        /* [[${currentDate}]] và [[${employeeName}]] sẽ được Thymeleaf thay thế bằng giá trị thực tế */
+        function downloadFile() {
+            let currentUrl = window.location.href; // Lấy URL hiện tại
+            let currentDate = [[${currentDate}]] || ""; // Thymeleaf sẽ thay thế giá trị này
+            let employeeName = [[${employeeName}]] || ""; // Thymeleaf sẽ thay thế giá trị này
+
+            // Tạo URL mới để tải file zip
+            let downloadUrl = currentUrl.split('?')[0] + "downloadAll/" + currentDate + "?employeeName=" + employeeName;
+
+            // Chuyển hướng đến URL mới
+            window.location.href = downloadUrl;
+        }
+
+        function validateEmployeeName(isBlur) {
+            var inputElement = document.getElementById("employeeName");
+            var errorMessage = document.getElementById("error-message");
+
+            // Kiểm tra chuỗi không chứa ký tự có dấu và khoảng trắng
+            var regex = /^[a-zA-Z0-9]+$/;
+            if (!regex.test(inputElement.value)) {
+                errorMessage.style.display = 'inline';
+                if (isBlur) {
+                    inputElement.value = ""; // Xóa giá trị của ô input
+                }
+            } else {
+                errorMessage.style.display = 'none';
+            }
+
+            // Nếu isBlur là true, xóa giá trị của ô input
+
+        }
+
+        function updateStartTime(index) {
+            var checkbox = document.getElementById('isComplete' + index);
+            if (checkbox.checked) {
+                var completingTime = document.getElementById('completingTime' + index).value;
+                var nextStartTime = document.getElementById('startTime' + (index + 1));
+                if (nextStartTime) {
+                    nextStartTime.value = completingTime;
+                }
+            }
+        }
+
+        function updateStartTimeOnBlur(index) {
+            var checkbox = document.getElementById('isComplete' + index);
+            if (checkbox.checked) {
+                var completingTime = document.getElementById('completingTime' + index).value;
+                var nextStartTime = document.getElementById('startTime' + (index + 1));
+                if (nextStartTime) {
+                    nextStartTime.value = completingTime;
+                }
+            }
+        }
+        document.getElementById("startTime0").defaultValue = "9H15";
+    </script>
     <hr/>
     <div th:if="${isShowSuccess}">
         <div class="alert alert-success" role="alert">
-            Reports has been downloaded at D:\HourReport
+            Report has created
+            <button class="btn btn-primary" onclick="downloadFile()">
+                Download now
+            </button>
         </div>
     </div>
     <div th:if="${!isShowSuccess}">
         <form action="#" th:action="@{/submit}" th:object="${form}" method="post">
-            <div class="row mb-3  ">
+            <div class="row mb-3">
                 <div class="col-auto mt-1" style="width: 100px">
                     <h5>Name</h5>
                 </div>
-                <div class="col">
+                <div class="col d-flex align-items-center">
                     <input class="form-control" style="width: 200px" type="text" th:field="*{employeeName}"
-                           placeholder="LeVietDong" required/>
+                           placeholder="LeVietDong" oninput="validateEmployeeName(false)" required
+                           onblur="validateEmployeeName(true)"/>
+                    <span id="error-message" style="color: red; display: none; margin-left: 10px;">Tên phải viết liền không dấu</span>
                 </div>
             </div>
-
+            <div class="row mb-3">
+                <div class="col-auto mt-1" style="width: 100px">
+                    <h5 class="">Position</h5>
+                </div>
+                <div class="col">
+                    <select class="form-select" aria-label="Default select example" style="width: 200px"
+                            th:field="*{dept}" required id="dept">
+                        <option value="DevHCM" selected>DevHCM</option>
+                        <option value="AsHCM">AsHCM</option>
+                        <option value="DevHN">DevHN</option>
+                        <option value="AsHN">AsHN</option>
+                    </select>
+                </div>
+            </div>
             <div class="row mb-3">
                 <div class="col-auto mt-1 " style="width: 100px">
                     <h5 class="">Date</h5>
@@ -64,14 +138,14 @@
                 </div>
             </div>
             <h2 class="text-center">REPORT DETAILS</h2>
-
             <table class="table table-bordered table-hover">
                 <thead>
                 <tr>
                     <th scope="col" style="width: 10%;" class="text-center">Report Time</th>
+                    <th scope="col" style="width: 10%;" class="text-center">Start Time</th>
                     <th scope="col" class="text-center">Job Content</th>
-                    <th scope="col" style="width: 12%;" class="text-center">Completed Y/N</th>
-                    <th scope="col" style="width: 12%;" class="text-center">Completing time</th>
+                    <th scope="col" style="width: 9%;" class="text-center">Completed?</th>
+                    <th scope="col" style="width: 11%;" class="text-center">Completed Time</th>
                     <th scope="col" style="width: 15%;" class="text-center">Remark</th>
                 </tr>
                 </thead>
@@ -79,185 +153,220 @@
                 <tbody>
                 <!-- Row 0 -->
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[0]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[0]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[0]}" placeholder=".... " required
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime0" class="form-control" th:field="*{startTimes[0]}"
+                      style="width: 100%; height: 100%; border: none;" ></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[0]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[0]}" th:value="y"
-                               checked>
+                        <input id="isComplete0" class="form-check-input" type="checkbox" th:field="*{isCompletes[0]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(0)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[0]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime0" class="form-control" th:field="*{completingTimes[0]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(0)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[0]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[0]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
 
-                <!-- Row 1 -->
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[1]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[1]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[1]}" placeholder=".... " required
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime1" class="form-control" th:field="*{startTimes[1]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[1]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[1]}" th:value="y"
-                               checked>
+                        <input id="isComplete1" class="form-check-input" type="checkbox" th:field="*{isCompletes[1]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(1)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[1]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime1" class="form-control" th:field="*{completingTimes[1]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(1)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[1]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[1]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
 
-                <!-- Row 2 -->
+                <!-- Repeat for other rows -->
+
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[2]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[2]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[2]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime2" class="form-control" th:field="*{startTimes[2]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[2]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[2]}" th:value="y"
-                               checked>
+                        <input id="isComplete2" class="form-check-input" type="checkbox" th:field="*{isCompletes[2]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(2)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[2]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime2" class="form-control" th:field="*{completingTimes[2]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(2)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[2]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[2]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
 
-                <!-- Row 3 -->
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[3]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[3]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[3]}" placeholder=".... " required
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime3" class="form-control" th:field="*{startTimes[3]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[3]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[3]}" th:value="y"
-                               checked>
+                        <input id="isComplete3" class="form-check-input" type="checkbox" th:field="*{isCompletes[3]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(3)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[3]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime3" class="form-control" th:field="*{completingTimes[3]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(3)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[3]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[3]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
 
-                <!-- Row 4 -->
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[4]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[4]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[4]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime4" class="form-control" th:field="*{startTimes[4]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[4]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[4]}" th:value="y"
-                               checked>
+                        <input id="isComplete4" class="form-check-input" type="checkbox" th:field="*{isCompletes[4]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(4)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[4]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime4" class="form-control" th:field="*{completingTimes[4]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(4)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[4]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[4]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
 
-                <!-- Row 5 -->
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[5]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[5]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[5]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime5" class="form-control" th:field="*{startTimes[5]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[5]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[5]}" th:value="y"
-                               checked>
+                        <input id="isComplete5" class="form-check-input" type="checkbox" th:field="*{isCompletes[5]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(5)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[5]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime5" class="form-control" th:field="*{completingTimes[5]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(5)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[5]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[5]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
 
-                <!-- Row 6 -->
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[6]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[6]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[6]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime6" class="form-control" th:field="*{startTimes[6]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[6]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[6]}" th:value="y"
-                               checked>
+                        <input id="isComplete6" class="form-check-input" type="checkbox" th:field="*{isCompletes[6]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(6)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[6]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime6" class="form-control" th:field="*{completingTimes[6]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(6)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[6]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[6]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
 
-                <!-- Row 7 -->
                 <tr>
-                    <td class="text-center">
-                        <span style="font-weight: bold;" th:text="*{startTime[7]}"></span>
+                    <td class="align-middle text-center ">
+                        <span style="font-weight: bold;" th:text="*{reportTime[7]}"></span>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{descriptions[7]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="startTime7" class="form-control" th:field="*{startTimes[7]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
+                    </td>
+                    <td>
+            <textarea class="form-control" th:field="*{descriptions[7]}" placeholder=".... " required
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <input class="form-check-input" type="checkbox" th:field="*{isCompletes[7]}" th:value="y"
-                               checked>
+                        <input id="isComplete7" class="form-check-input" type="checkbox" th:field="*{isCompletes[7]}"
+                               th:value="y"
+                               checked onchange="updateStartTime(7)">
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{completingTimes[7]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea id="completingTime7" class="form-control" th:field="*{completingTimes[7]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;" onblur="updateStartTimeOnBlur(7)"></textarea>
                     </td>
                     <td>
-                        <textarea class="form-control" th:field="*{remarks[7]}" placeholder=".... "
-                                  style="width: 100%; height: 100%; border: none;"></textarea>
+            <textarea class="form-control" th:field="*{remarks[7]}" placeholder=".... "
+                      style="width: 100%; height: 100%; border: none;"></textarea>
                     </td>
                 </tr>
                 </tbody>
@@ -266,7 +375,7 @@
             </table>
             <br>
             <div>
-                <button type="submit" class="btn btn-primary">Download report</button>
+                <button type="submit" class="btn btn-primary">Create report</button>
             </div>
         </form>
     </div>

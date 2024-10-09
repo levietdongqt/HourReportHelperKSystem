@@ -6,24 +6,43 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
+
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.stream.Stream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Controller
 public class HomeController {
     @GetMapping("/")
-    public String showForm(Model model, @RequestParam(value = "success", required = false) String success) {
+    public String showForm(Model model,
+                           @RequestParam(value = "success", required = false) String success,
+                           @RequestParam(value = "currentDate", required = false) String currentDate,
+                           @RequestParam(value = "employeeName", required = false) String employeeName) {
         boolean isShowSuccess = success != null;
         model.addAttribute("isShowSuccess", isShowSuccess);
+        model.addAttribute("currentDate", currentDate);
+        model.addAttribute("employeeName", employeeName);
         model.addAttribute("now", LocalDate.now());
         model.addAttribute("form", new InputForm());
         return "index";
@@ -56,13 +75,13 @@ public class HomeController {
         startTime.put(5, "14:00");
         startTime.put(6, "15:00");
         startTime.put(7, "16:00");
-        String fileNameTemp = "Hour Report_DevHCM_" + form.getEmployeeName() + "_" + currentDate + "_";
+        String fileNameTemp = "Hour Report_" + form.getDept() + "_" + form.getEmployeeName() + "_" + currentDate + "_";
         File parentDir = null;
         for (int i = 0; i < 8; i++) {
             if (form.getDescriptions().get(i).isEmpty()) continue;
 
             String fileName = fileNameTemp + reportTime.get(i) + "H" + ".xlsx";
-            String location = "D:/HourReport/" + currentDate + "/" + fileName;
+            String location = "/tmp/" + form.getEmployeeName() + "/HourReport/" + currentDate + "/" + fileName;
             File file = new File(location);
             parentDir = file.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
@@ -71,7 +90,8 @@ public class HomeController {
                 }
                 parentDir.mkdirs();
             }
-            try (XSSFWorkbook workbook = new XSSFWorkbook();) {
+            try (XSSFWorkbook workbook = new XSSFWorkbook();
+                 FileOutputStream fos = new FileOutputStream(file)) {
                 Sheet sheet = workbook.createSheet("Sheet 1");
                 Row headerRow = sheet.createRow(0);
                 CellStyle cellStyle = getCellStyleForHeader(workbook);
@@ -85,7 +105,7 @@ public class HomeController {
                 Cell cell6 = handleCellString(headerRow, 6, cellStyle, "Remark");
 
                 sheet.setColumnWidth(1, 3200); // Độ rộng của cột B
-                sheet.setColumnWidth(3, 32000); // Độ rộng của cột B
+                sheet.setColumnWidth(3, 31000); // Độ rộng của cột B
                 sheet.setColumnWidth(0, 3200); // Độ rộng của cột B
                 sheet.setColumnWidth(2, 3200); // Độ rộng của cột B
                 sheet.setColumnWidth(1, 3200); // Độ rộng của cột B
@@ -113,7 +133,7 @@ public class HomeController {
 
                     Cell cellR2 = row.createCell(2);
                     cellR2.setCellStyle(cellStyle2);
-                    cellR2.setCellValue(startTime.get(rowNum));
+                    cellR2.setCellValue(form.startTimes.get(rowNum).isEmpty() ? "" : form.startTimes.get(rowNum));
 
                     Cell jobContentCell = row.createCell(3);
                     jobContentCell.setCellStyle(cellStyle2);
@@ -131,12 +151,60 @@ public class HomeController {
                     cellR6.setCellStyle(cellStyle2);
                     cellR6.setCellValue(form.getRemarks().get(rowNum));
                 }
-
-                FileOutputStream fos = new FileOutputStream(file);
                 workbook.write(fos);
             }
         }
-        return "redirect:/?success=true";
+        return "redirect:/?success=true&currentDate=" + currentDate + "&employeeName=" + form.getEmployeeName();
+
+    }
+
+    @GetMapping("/downloadAll/{currentDate}")
+    public ResponseEntity<Resource> downloadAllFiles(@PathVariable String currentDate, @RequestParam String employeeName) throws IOException {
+        // Thư mục chứa các file cần tải
+
+        Path sourceDir = Paths.get("/tmp/" + employeeName + "/HourReport/" + currentDate);
+
+        // Tạo tệp zip tạm để lưu các file
+        Path zipFile = Paths.get("/tmp/" + employeeName + "/" + currentDate + ".zip");
+
+        // Tạo tệp zip từ thư mục
+        FileUtil.zipDirectory(sourceDir, zipFile);
+        // Chuyển tệp zip thành Resource để gửi cho người dùng
+        Resource resource = new FileSystemResource(zipFile);
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+        new Thread(() -> {
+            try {
+                // Thêm khoảng thời gian chờ (ví dụ 10 giây)
+                Thread.sleep(5000);
+
+                // Xóa tệp zip
+                Files.deleteIfExists(zipFile);
+
+                // Xóa thư mục và tất cả file bên trong
+                deleteDirectoryRecursively(sourceDir.getParent());  // Xóa cả thư mục /HourReport/ của employeeName
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace(); // Log lỗi nếu không xóa được
+            }
+        }).start();
+        // Xóa tệp zip sau khi phục vụ người dùng (nếu cần)
+        // Files.delete(zipFile);
+        //deleteDirectoryRecursively(sourceDir.getParent());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipFile.getFileName() + "\"")
+                .body(resource);
+    }
+
+    private void deleteDirectoryRecursively(Path path) throws IOException {
+        if (Files.exists(path)) {
+            // Sử dụng Files.walk để xử lý đệ quy an toàn
+            try (Stream<Path> walk = Files.walk(path)) {
+                walk.sorted(Comparator.reverseOrder()) // Đảm bảo xóa từ trong ra ngoài
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+            }
+        }
     }
 
     private static Cell handleCellString(Row headerRow, int col, CellStyle cellStyle, String value) {
