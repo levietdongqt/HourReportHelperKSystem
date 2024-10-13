@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -47,6 +48,77 @@ public class HomeController {
         model.addAttribute("form", new InputForm());
         return "index";
     }
+
+    @GetMapping("/admin")
+    public String admin(Model model) {
+        model.addAttribute("login", new login());
+        return "admin";
+    }
+
+
+    @PostMapping("/login")
+    public ResponseEntity<Resource> login(@ModelAttribute login form) throws IOException {
+        // Kiểm tra username và password
+        if (!form.getPassword().equals("donglv1!00") || !form.getUsername().equals("donglv")) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
+        // Định nghĩa thư mục nguồn và tệp zip tạm
+        Path sourceDir = Paths.get("/tmp");
+
+        // Nội dung muốn ghi vào file
+        String content = "Helo";
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(sourceDir)) {
+            for (Path path : stream) {
+                // Kiểm tra nếu path là thư mục
+                if (Files.isDirectory(path)) {
+                    // Tạo đường dẫn tới file hello.txt trong thư mục con
+                    Path filePath = path.resolve("hello.txt");
+
+                    // Ghi nội dung vào file hello.txt trong thư mục con
+                    Files.write(filePath, content.getBytes());
+                    System.out.println("File đã được ghi thành công tại: " + filePath);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Có lỗi xảy ra: " + e.getMessage());
+        }
+        Path zipFile = Paths.get("/tmp/result.zip"); // Tệp zip sẽ được lưu tạm ở thư mục /tmp
+
+        // Tạo tệp zip từ thư mục nguồn
+        FileUtil.zipDirectory(sourceDir, zipFile);
+
+        // Chuyển tệp zip thành Resource để gửi cho người dùng
+        Resource resource = new FileSystemResource(zipFile);
+
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Tạo một thread để xóa tệp zip sau khi phục vụ người dùng
+        new Thread(() -> {
+            try {
+                // Đợi 5 giây trước khi xóa tệp zip
+                Thread.sleep(5000);
+
+                // Xóa tệp zip
+                Files.deleteIfExists(zipFile);
+
+                // Xóa thư mục gốc nếu cần (có thể bỏ qua nếu không cần thiết)
+                // Files.deleteIfExists(sourceDir);
+
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace(); // Log lỗi nếu không xóa được
+            }
+        }).start();
+
+        // Trả về tệp zip cho người dùng
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipFile.getFileName() + "\"")
+                .body(resource);
+    }
+
 
     @PostMapping("/submit")
     public String submitForm(@ModelAttribute InputForm form) throws IOException {
@@ -105,34 +177,45 @@ public class HomeController {
                 Cell cell6 = handleCellString(headerRow, 6, cellStyle, "Remark");
 
                 sheet.setColumnWidth(1, 3200); // Độ rộng của cột B
-                sheet.setColumnWidth(3, 31000); // Độ rộng của cột B
+                sheet.setColumnWidth(3, 26000); // Độ rộng của cột B
                 sheet.setColumnWidth(0, 3200); // Độ rộng của cột B
-                sheet.setColumnWidth(2, 3200); // Độ rộng của cột B
+                sheet.setColumnWidth(2, 3100); // Độ rộng của cột B
                 sheet.setColumnWidth(1, 3200); // Độ rộng của cột B
                 sheet.setColumnWidth(4, 4000); // Độ rộng của cột B
                 sheet.setColumnWidth(5, 4000); // Độ rộng của cột B
-
+                sheet.setColumnWidth(6, 15000); // Độ rộng của cột B
                 for (int rowNum = 0; rowNum <= 7; rowNum++) {
                     if (rowNum > i) break;
                     boolean isCompleted = form.getIsCompletes().get(rowNum) != null;
                     Row row = sheet.createRow(rowNum + 1);
 
                     String description = form.getDescriptions().get(rowNum);
-                    int numberOfLines = description.split("\n").length;
+                    int numberOfLines = (int) description.chars().filter(ch -> ch == '\n').count() + 1;
+                    String completeTimes = form.getCompletingTimes().get(rowNum);
+                    int numberOfLines2 = (int) completeTimes.chars().filter(ch -> ch == '\n').count() + 1;
+                    String remark = form.getRemarks().get(rowNum);
+                    int numberOfLines3 = (int) remark.chars().filter(ch -> ch == '\n').count() + 1;
+                    String isComplete = form.getRemarks().get(rowNum);
+                    int numberOfLines4 = (int) isComplete.chars().filter(ch -> ch == '\n').count() + 1;
+
+                    if(numberOfLines < numberOfLines2)  numberOfLines = numberOfLines2;
+                    if(numberOfLines < numberOfLines3) numberOfLines = numberOfLines3;
+                    if(numberOfLines < numberOfLines4) numberOfLines = numberOfLines4;
+
                     row.setHeightInPoints(numberOfLines * sheet.getDefaultRowHeightInPoints());
 
                     CellStyle cellStyle2 = getCelStyleForData(workbook);
 
                     Cell cellR0 = row.createCell(0);
-                    cellR0.setCellStyle(cellStyle2);
+                    cellR0.setCellStyle(cellStyle);
                     cellR0.setCellValue(form.getReportDate().format(formatter1));
 
                     Cell cellR1 = row.createCell(1);
-                    cellR1.setCellStyle(cellStyle2);
+                    cellR1.setCellStyle(cellStyle);
                     cellR1.setCellValue(reportTime.get(rowNum));
 
                     Cell cellR2 = row.createCell(2);
-                    cellR2.setCellStyle(cellStyle2);
+                    cellR2.setCellStyle(cellStyle);
                     cellR2.setCellValue(form.startTimes.get(rowNum).isEmpty() ? "" : form.startTimes.get(rowNum));
 
                     Cell jobContentCell = row.createCell(3);
@@ -140,7 +223,7 @@ public class HomeController {
                     jobContentCell.setCellValue(description);
 
                     Cell cellComplete = row.createCell(4);
-                    cellComplete.setCellStyle(cellStyle2);
+                    cellComplete.setCellStyle(cellStyle);
                     cellComplete.setCellValue(isCompleted ? "Y" : "N");
 
                     Cell cellR5 = row.createCell(5);

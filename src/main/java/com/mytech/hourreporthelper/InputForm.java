@@ -16,16 +16,16 @@ public class InputForm {
         isCompletes = new ArrayList<>();
         remarks = new ArrayList<>();
 
-        reportTime.put(0, "8-9H");
-        reportTime.put(1, "9-10H");
-        reportTime.put(2, "10-11H");
-        reportTime.put(3, "11-12H");
-        reportTime.put(4, "13-14H");
-        reportTime.put(5, "14-15H");
-        reportTime.put(6, "15-16H");
-        reportTime.put(7, "16-17H");
+        reportTime.put(0, "9H");
+        reportTime.put(1, "10H");
+        reportTime.put(2, "11H");
+        reportTime.put(3, "12H");
+        reportTime.put(4, "14H");
+        reportTime.put(5, "15H");
+        reportTime.put(6, "16H");
+        reportTime.put(7, "17H");
         startTimes.addAll(List.of("8:15","","","","","","",""));
-
+        isCompletes.addAll(List.of("N","N","N","N","N","N","N","N"));
 
         loops.addAll(List.of(0,1,2,3,4,5,6,7));
     }
