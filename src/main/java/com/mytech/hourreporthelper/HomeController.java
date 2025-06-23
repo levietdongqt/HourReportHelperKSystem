@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -11,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
+import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -25,17 +26,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Controller
 public class HomeController {
-    @GetMapping("/")
+    @GetMapping("/old")
     public String showForm(Model model,
                            @RequestParam(value = "success", required = false) String success,
                            @RequestParam(value = "currentDate", required = false) String currentDate,
@@ -49,14 +50,14 @@ public class HomeController {
         return "index";
     }
 
-    @GetMapping("/admin")
+    @GetMapping("/old/admin")
     public String admin(Model model) {
         model.addAttribute("login", new login());
         return "admin";
     }
 
 
-    @PostMapping("/login")
+    @PostMapping("/old/login")
     public ResponseEntity<Resource> login(@ModelAttribute login form) throws IOException {
         // Kiểm tra username và password
         if (!form.getPassword().equals("donglv1!00") || !form.getUsername().equals("donglv")) {
@@ -65,28 +66,14 @@ public class HomeController {
 
         // Định nghĩa thư mục nguồn và tệp zip tạm
         Path sourceDir = Paths.get("/tmp");
-
-        // Nội dung muốn ghi vào file
-        String content = "Helo";
-
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(sourceDir)) {
-            for (Path path : stream) {
-                // Kiểm tra nếu path là thư mục
-                if (Files.isDirectory(path)) {
-                    // Tạo đường dẫn tới file hello.txt trong thư mục con
-                    Path filePath = path.resolve("hello.txt");
-
-                    // Ghi nội dung vào file hello.txt trong thư mục con
-                    Files.write(filePath, content.getBytes());
-                    System.out.println("File đã được ghi thành công tại: " + filePath);
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Có lỗi xảy ra: " + e.getMessage());
-        }
         Path zipFile = Paths.get("/tmp/result.zip"); // Tệp zip sẽ được lưu tạm ở thư mục /tmp
 
-        // Tạo tệp zip từ thư mục nguồn
+        // Kiểm tra sự tồn tại của thư mục nguồn
+        if (!Files.exists(sourceDir) || !Files.isDirectory(sourceDir)) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+
+        // Nén thư mục
         FileUtil.zipDirectory(sourceDir, zipFile);
 
         // Chuyển tệp zip thành Resource để gửi cho người dùng
@@ -96,22 +83,16 @@ public class HomeController {
             return ResponseEntity.notFound().build();
         }
 
-        // Tạo một thread để xóa tệp zip sau khi phục vụ người dùng
-        new Thread(() -> {
+        // Sử dụng ScheduledExecutorService để xóa tệp zip sau 5 giây
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        executor.schedule(() -> {
             try {
-                // Đợi 5 giây trước khi xóa tệp zip
-                Thread.sleep(5000);
-
                 // Xóa tệp zip
                 Files.deleteIfExists(zipFile);
-
-                // Xóa thư mục gốc nếu cần (có thể bỏ qua nếu không cần thiết)
-                // Files.deleteIfExists(sourceDir);
-
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException e) {
                 e.printStackTrace(); // Log lỗi nếu không xóa được
             }
-        }).start();
+        }, 10, TimeUnit.SECONDS);
 
         // Trả về tệp zip cho người dùng
         return ResponseEntity.ok()
@@ -120,9 +101,8 @@ public class HomeController {
     }
 
 
-    @PostMapping("/submit")
-    public String submitForm(@ModelAttribute InputForm form) throws IOException {
-
+    @PostMapping("/old/submit")
+    public String submitForm(@ModelAttribute InputForm form) throws IOException, InterruptedException {
         DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyyMMdd");
         LocalDate now = form.getReportDate();
@@ -149,6 +129,7 @@ public class HomeController {
         startTime.put(7, "16:00");
         String fileNameTemp = "Hour Report_" + form.getDept() + "_" + form.getEmployeeName() + "_" + currentDate + "_";
         File parentDir = null;
+
         for (int i = 0; i < 8; i++) {
             if (form.getDescriptions().get(i).isEmpty()) continue;
 
@@ -163,9 +144,13 @@ public class HomeController {
                 parentDir.mkdirs();
             }
             try (XSSFWorkbook workbook = new XSSFWorkbook();
+
                  FileOutputStream fos = new FileOutputStream(file)) {
                 Sheet sheet = workbook.createSheet("Sheet 1");
+
+
                 Row headerRow = sheet.createRow(0);
+
                 CellStyle cellStyle = getCellStyleForHeader(workbook);
 
                 Cell cell0 = handleCellString(headerRow, 0, cellStyle, "ReportDate");
@@ -176,34 +161,19 @@ public class HomeController {
                 Cell cell5 = handleCellString(headerRow, 5, cellStyle, "Completing time");
                 Cell cell6 = handleCellString(headerRow, 6, cellStyle, "Remark");
 
-                sheet.setColumnWidth(1, 3200); // Độ rộng của cột B
-                sheet.setColumnWidth(3, 26000); // Độ rộng của cột B
-                sheet.setColumnWidth(0, 3200); // Độ rộng của cột B
-                sheet.setColumnWidth(2, 3100); // Độ rộng của cột B
-                sheet.setColumnWidth(1, 3200); // Độ rộng của cột B
-                sheet.setColumnWidth(4, 4000); // Độ rộng của cột B
-                sheet.setColumnWidth(5, 4000); // Độ rộng của cột B
-                sheet.setColumnWidth(6, 15000); // Độ rộng của cột B
+                sheet.setColumnWidth(1, 3200);
+                sheet.setColumnWidth(3, 26000);
+                sheet.setColumnWidth(0, 3200);
+                sheet.setColumnWidth(2, 3100);
+                sheet.setColumnWidth(1, 3200);
+                sheet.setColumnWidth(4, 4000);
+                sheet.setColumnWidth(5, 4000);
+                sheet.setColumnWidth(6, 15000);
                 for (int rowNum = 0; rowNum <= 7; rowNum++) {
                     if (rowNum > i) break;
-                    boolean isCompleted = form.getIsCompletes().get(rowNum) != null;
                     Row row = sheet.createRow(rowNum + 1);
-
+                    row.setHeight((short) -1);
                     String description = form.getDescriptions().get(rowNum);
-                    int numberOfLines = (int) description.chars().filter(ch -> ch == '\n').count() + 1;
-                    String completeTimes = form.getCompletingTimes().get(rowNum);
-                    int numberOfLines2 = (int) completeTimes.chars().filter(ch -> ch == '\n').count() + 1;
-                    String remark = form.getRemarks().get(rowNum);
-                    int numberOfLines3 = (int) remark.chars().filter(ch -> ch == '\n').count() + 1;
-                    String isComplete = form.getRemarks().get(rowNum);
-                    int numberOfLines4 = (int) isComplete.chars().filter(ch -> ch == '\n').count() + 1;
-
-                    if(numberOfLines < numberOfLines2)  numberOfLines = numberOfLines2;
-                    if(numberOfLines < numberOfLines3) numberOfLines = numberOfLines3;
-                    if(numberOfLines < numberOfLines4) numberOfLines = numberOfLines4;
-
-                    row.setHeightInPoints(numberOfLines * sheet.getDefaultRowHeightInPoints());
-
                     CellStyle cellStyle2 = getCelStyleForData(workbook);
 
                     Cell cellR0 = row.createCell(0);
@@ -224,7 +194,7 @@ public class HomeController {
 
                     Cell cellComplete = row.createCell(4);
                     cellComplete.setCellStyle(cellStyle);
-                    cellComplete.setCellValue(isCompleted ? "Y" : "N");
+                    cellComplete.setCellValue(form.getIsCompletes().get(rowNum));
 
                     Cell cellR5 = row.createCell(5);
                     cellR5.setCellStyle(cellStyle2);
@@ -237,6 +207,22 @@ public class HomeController {
                 workbook.write(fos);
             }
         }
+
+        Path sourceDir = Paths.get("/tmp/" + form.getEmployeeName());
+        Path filePath = sourceDir.resolve("hello.txt");
+        String content = currentDate + System.lineSeparator(); // Thêm một dòng mới
+
+        try {
+            // Tạo thư mục nếu chưa tồn tại
+            Files.createDirectories(sourceDir);
+            // Ghi nội dung vào tệp hello.txt với tùy chọn append
+            Files.write(filePath, content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            System.out.println("File đã được ghi thành công tại: " + filePath);
+        } catch (IOException e) {
+            System.out.println("Có lỗi xảy ra: " + e.getMessage());
+        }
+
+
         return "redirect:/?success=true&currentDate=" + currentDate + "&employeeName=" + form.getEmployeeName();
 
     }
@@ -298,7 +284,11 @@ public class HomeController {
     }
 
     private static CellStyle getCellStyleForHeader(XSSFWorkbook workbook) {
+        Font font = workbook.createFont();
+        font.setFontName("Arial"); // Thiết lập font là Times New Roman
+        font.setFontHeightInPoints((short) 11);
         CellStyle cellStyle = workbook.createCellStyle();
+        cellStyle.setFont(font);
         cellStyle.setBorderTop(BorderStyle.THIN);      // Viền trên
         cellStyle.setBorderBottom(BorderStyle.THIN);   // Viền dưới
         cellStyle.setBorderLeft(BorderStyle.THIN);     // Viền trái
@@ -311,7 +301,11 @@ public class HomeController {
     }
 
     private static CellStyle getCelStyleForData(XSSFWorkbook workbook) {
+        Font font = workbook.createFont();
+        font.setFontName("Arial"); // Thiết lập font là Times New Roman
+//        font.setFontHeightInPoints((short) 11);
         CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font);
         cellStyle2.setAlignment(HorizontalAlignment.LEFT);
         cellStyle2.setWrapText(true);
         cellStyle2.setBorderTop(BorderStyle.THIN);      // Viền trên

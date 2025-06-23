@@ -24,7 +24,7 @@ public class InputForm {
         reportTime.put(5, "15H");
         reportTime.put(6, "16H");
         reportTime.put(7, "17H");
-        startTimes.addAll(List.of("8:15","","","","","","",""));
+        startTimes.addAll(List.of("8:10","","","","","","",""));
         isCompletes.addAll(List.of("N","N","N","N","N","N","N","N"));
 
         loops.addAll(List.of(0,1,2,3,4,5,6,7));

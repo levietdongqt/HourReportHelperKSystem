@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gửi Báo Cáo Giờ</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0d6e6e;
+            --primary-dark: #0a5353;
+            --secondary-color: #e7f7f7;
+            --text-color: #333;
+            --light-gray: #e5e7eb;
+            --border-color: #d1d5db;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --transition: all 0.3s ease;
+            --gradient-bg: linear-gradient(135deg, #0d6e6e 0%, #14b8a6 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            line-height: 1.6;
+            background-color: #f5f7f7;
+            color: var(--text-color);
+            padding: 20px;
+            background-image: linear-gradient(to bottom right, #f5f7f7, #e2edec);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+            border-top: 5px solid var(--primary-color);
+        }
+
+        .container:hover {
+            box-shadow: 0 10px 15px -3px rgba(13, 110, 110, 0.1), 0 4px 6px -2px rgba(13, 110, 110, 0.05);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            padding-bottom: 10px;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-color);
+            transition: var(--transition);
+        }
+
+        .form-group:hover label {
+            color: var(--primary-dark);
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: var(--transition);
+            background-color: #fff;
+            color: var(--text-color);
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(13, 110, 110, 0.2);
+        }
+
+        input[type="text"]:hover,
+        input[type="email"]:hover,
+        input[type="password"]:hover {
+            border-color: var(--primary-color);
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px 0;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Custom file input styling */
+        .file-input-container {
+            position: relative;
+            padding: 12px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            background-color: var(--secondary-color);
+        }
+
+        .file-input-container:hover {
+            border-color: var(--primary-color);
+            background-color: #d5efef;
+        }
+
+        .file-input-container input[type="file"] {
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: block;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .file-input-icon {
+            font-size: 28px;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .file-input-text {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .note {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 8px;
+            transition: var(--transition);
+            padding-left: 5px;
+            border-left: 2px solid var(--light-gray);
+        }
+
+        .form-group:hover .note {
+            border-left-color: var(--primary-color);
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--gradient-bg);
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px rgba(13, 110, 110, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #0a5353 0%, #0d9b8a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(13, 110, 110, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(13, 110, 110, 0.2);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+
+        .btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(100, 100);
+                opacity: 0;
+            }
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-weight: 600;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        /* Hamster Wheel Animation */
+        .wheel-and-hamster {
+          --dur: 1s;
+          position: relative;
+          width: 12em;
+          height: 12em;
+          font-size: 14px;
+        }
+
+        .wheel,
+        .hamster,
+        .hamster div,
+        .spoke {
+          position: absolute;
+        }
+
+        .wheel,
+        .spoke {
+          border-radius: 50%;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .wheel {
+          background: radial-gradient(100% 100% at center,hsla(0,0%,60%,0) 47.8%,hsl(0,0%,60%) 48%);
+          z-index: 2;
+        }
+
+        .hamster {
+          animation: hamster var(--dur) ease-in-out infinite;
+          top: 50%;
+          left: calc(50% - 3.5em);
+          width: 7em;
+          height: 3.75em;
+          transform: rotate(4deg) translate(-0.8em,1.85em);
+          transform-origin: 50% 0;
+          z-index: 1;
+        }
+
+        .hamster__head {
+          animation: hamsterHead var(--dur) ease-in-out infinite;
+          background: hsl(30,90%,55%);
+          border-radius: 70% 30% 0 100% / 40% 25% 25% 60%;
+          box-shadow: 0 -0.25em 0 hsl(30,90%,80%) inset,
+                0.75em -1.55em 0 hsl(30,90%,90%) inset;
+          top: 0;
+          left: -2em;
+          width: 2.75em;
+          height: 2.5em;
+          transform-origin: 100% 50%;
+        }
+
+        .hamster__ear {
+          animation: hamsterEar var(--dur) ease-in-out infinite;
+          background: hsl(0,90%,85%);
+          border-radius: 50%;
+          box-shadow: -0.25em 0 hsl(30,90%,55%) inset;
+          top: -0.25em;
+          right: -0.25em;
+          width: 0.75em;
+          height: 0.75em;
+          transform-origin: 50% 75%;
+        }
+
+        .hamster__eye {
+          animation: hamsterEye var(--dur) linear infinite;
+          background-color: hsl(0,0%,0%);
+          border-radius: 50%;
+          top: 0.375em;
+          left: 1.25em;
+          width: 0.5em;
+          height: 0.5em;
+        }
+
+        .hamster__nose {
+          background: hsl(0,90%,75%);
+          border-radius: 35% 65% 85% 15% / 70% 50% 50% 30%;
+          top: 0.75em;
+          left: 0;
+          width: 0.2em;
+          height: 0.25em;
+        }
+
+        .hamster__body {
+          animation: hamsterBody var(--dur) ease-in-out infinite;
+          background: hsl(30,90%,90%);
+          border-radius: 50% 30% 50% 30% / 15% 60% 40% 40%;
+          box-shadow: 0.1em 0.75em 0 hsl(30,90%,55%) inset,
+                0.15em -0.5em 0 hsl(30,90%,80%) inset;
+          top: 0.25em;
+          left: 2em;
+          width: 4.5em;
+          height: 3em;
+          transform-origin: 17% 50%;
+          transform-style: preserve-3d;
+        }
+
+        .hamster__limb--fr,
+        .hamster__limb--fl {
+          clip-path: polygon(0 0,100% 0,70% 80%,60% 100%,0% 100%,40% 80%);
+          top: 2em;
+          left: 0.5em;
+          width: 1em;
+          height: 1.5em;
+          transform-origin: 50% 0;
+        }
+
+        .hamster__limb--fr {
+          animation: hamsterFRLimb var(--dur) linear infinite;
+          background: linear-gradient(hsl(30,90%,80%) 80%,hsl(0,90%,75%) 80%);
+          transform: rotate(15deg) translateZ(-1px);
+        }
+
+        .hamster__limb--fl {
+          animation: hamsterFLLimb var(--dur) linear infinite;
+          background: linear-gradient(hsl(30,90%,90%) 80%,hsl(0,90%,85%) 80%);
+          transform: rotate(15deg);
+        }
+
+        .hamster__limb--br,
+        .hamster__limb--bl {
+          border-radius: 0.75em 0.75em 0 0;
+          clip-path: polygon(0 0,100% 0,100% 30%,70% 90%,70% 100%,30% 100%,40% 90%,0% 30%);
+          top: 1em;
+          left: 2.8em;
+          width: 1.5em;
+          height: 2.5em;
+          transform-origin: 50% 30%;
+        }
+
+        .hamster__limb--br {
+          animation: hamsterBRLimb var(--dur) linear infinite;
+          background: linear-gradient(hsl(30,90%,80%) 90%,hsl(0,90%,75%) 90%);
+          transform: rotate(-25deg) translateZ(-1px);
+        }
+
+        .hamster__limb--bl {
+          animation: hamsterBLLimb var(--dur) linear infinite;
+          background: linear-gradient(hsl(30,90%,90%) 90%,hsl(0,90%,85%) 90%);
+          transform: rotate(-25deg);
+        }
+
+        .hamster__tail {
+          animation: hamsterTail var(--dur) linear infinite;
+          background: hsl(0,90%,85%);
+          border-radius: 0.25em 50% 50% 0.25em;
+          box-shadow: 0 -0.2em 0 hsl(0,90%,75%) inset;
+          top: 1.5em;
+          right: -0.5em;
+          width: 1em;
+          height: 0.5em;
+          transform: rotate(30deg) translateZ(-1px);
+          transform-origin: 0.25em 0.25em;
+        }
+
+        .spoke {
+          animation: spoke var(--dur) linear infinite;
+          background: radial-gradient(100% 100% at center,hsl(0,0%,60%) 4.8%,hsla(0,0%,60%,0) 5%),
+                linear-gradient(hsla(0,0%,55%,0) 46.9%,hsl(0,0%,65%) 47% 52.9%,hsla(0,0%,65%,0) 53%) 50% 50% / 99% 99% no-repeat;
+        }
+
+        /* Animations */
+        @keyframes hamster {
+          from, to {
+            transform: rotate(4deg) translate(-0.8em,1.85em);
+          }
+
+          50% {
+            transform: rotate(0) translate(-0.8em,1.85em);
+          }
+        }
+
+        @keyframes hamsterHead {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(0);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(8deg);
+          }
+        }
+
+        @keyframes hamsterEye {
+          from, 90%, to {
+            transform: scaleY(1);
+          }
+
+          95% {
+            transform: scaleY(0);
+          }
+        }
+
+        @keyframes hamsterEar {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(0);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(12deg);
+          }
+        }
+
+        @keyframes hamsterBody {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(0);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(-2deg);
+          }
+        }
+
+        @keyframes hamsterFRLimb {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(50deg) translateZ(-1px);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(-30deg) translateZ(-1px);
+          }
+        }
+
+        @keyframes hamsterFLLimb {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(-30deg);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(50deg);
+          }
+        }
+
+        @keyframes hamsterBRLimb {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(-60deg) translateZ(-1px);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(20deg) translateZ(-1px);
+          }
+        }
+
+        @keyframes hamsterBLLimb {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(20deg);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(-60deg);
+          }
+        }
+
+        @keyframes hamsterTail {
+          from, 25%, 50%, 75%, to {
+            transform: rotate(30deg) translateZ(-1px);
+          }
+
+          12.5%, 37.5%, 62.5%, 87.5% {
+            transform: rotate(10deg) translateZ(-1px);
+          }
+        }
+
+        @keyframes spoke {
+          from {
+            transform: rotate(0);
+          }
+
+          to {
+            transform: rotate(-1turn);
+          }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                margin: 20px auto;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gửi Báo Cáo Giờ</h1>
+        
+        <form id="emailForm" th:action="@{/process}" th:object="${emailConfig}" method="post" enctype="multipart/form-data" onsubmit="saveFormData(); showLoading(); return true;">
+            <!-- SMTP fields that are fixed in EmailConfig class -->
+            <input type="hidden" id="smtpServer" name="smtpServer" th:value="*{smtpServer}">
+            <input type="hidden" id="smtpPort" name="smtpPort" th:value="*{smtpPort}">
+            <input type="hidden" id="subject" name="subject" th:value="*{subject}">
+            <input type="hidden" id="message" name="message" th:value="*{message}">
+            
+            <div class="form-group">
+                <label for="username"><i class="fas fa-envelope"></i> Địa chỉ email của bạn:</label>
+                <input type="text" id="username" name="username" th:field="*{username}" placeholder="Ví dụ: donglv@ksystem.vn" required>
+                <p class="note">Sử dụng email đầy đủ của bạn (ví dụ: donglv@ksystem.vn)</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="displayName"><i class="fas fa-user"></i> Tên hiển thị:</label>
+                <input type="text" id="displayName" name="displayName" th:field="*{displayName}" placeholder="Ví dụ: Le Viet Dong (HCM)" required>
+                <p class="note">Tên này sẽ hiển thị cho người nhận email (ví dụ: Le Viet Dong (HCM))</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> Mật khẩu:</label>
+                <input type="password" id="password" name="password" th:field="*{password}" placeholder="Nhập mật khẩu email của bạn" required>
+                <p class="note">Sử dụng mật khẩu hanbiro</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="recipient"><i class="fas fa-paper-plane"></i> Địa chỉ email người nhận:</label>
+                <input type="email" id="recipient" name="recipient" th:field="*{recipient}" placeholder="Ví dụ: recipient@example.com" required>
+                <p class="note">Đây là địa chỉ email đích cần gửi mail tới</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="excelFile"><i class="fas fa-file-excel"></i> Chọn tệp Excel (.xlsx):</label>
+                <div class="file-input-container">
+                    <div class="file-input-icon"><i class="fas fa-file-excel"></i></div>
+                    <div class="file-input-text">Kéo và thả file Excel hoặc nhấp để chọn file</div>
+                    <!-- Keep it simple with just name attribute -->
+                    <input type="file" id="excelFile" name="excelFile" accept=".xlsx" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn"><i class="fas fa-paper-plane"></i> Gửi Báo Cáo</button>
+        </form>
+    </div>
+    
+    <!-- New Loading Overlay with Hamster Animation -->
+    <div id="loading" class="loading-overlay">
+        <div aria-label="Orange and tan hamster running in a metal wheel" role="img" class="wheel-and-hamster">
+            <div class="wheel"></div>
+            <div class="hamster">
+                <div class="hamster__body">
+                    <div class="hamster__head">
+                        <div class="hamster__ear"></div>
+                        <div class="hamster__eye"></div>
+                        <div class="hamster__nose"></div>
+                    </div>
+                    <div class="hamster__limb hamster__limb--fr"></div>
+                    <div class="hamster__limb hamster__limb--fl"></div>
+                    <div class="hamster__limb hamster__limb--br"></div>
+                    <div class="hamster__limb hamster__limb--bl"></div>
+                    <div class="hamster__tail"></div>
+                </div>
+            </div>
+            <div class="spoke"></div>
+        </div>
+        <div class="loading-text">Đang xử lý và gửi báo cáo, vui lòng đợi...</div>
+    </div>
+    
+    <script>
+        // Hiển thị tên file khi người dùng chọn file
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'Kéo và thả file Excel hoặc nhấp để chọn file';
+            document.querySelector('.file-input-text').textContent = fileName;
+        });
+
+        // Lưu dữ liệu form vào localStorage
+        function saveFormData() {
+            localStorage.setItem('hourReport_username', document.getElementById('username').value);
+            localStorage.setItem('hourReport_displayName', document.getElementById('displayName').value);
+            localStorage.setItem('hourReport_recipient', document.getElementById('recipient').value);
+        }
+        
+        // Tải dữ liệu từ localStorage khi trang được tải
+        document.addEventListener('DOMContentLoaded', function() {
+            const username = localStorage.getItem('hourReport_username');
+            const displayName = localStorage.getItem('hourReport_displayName');
+            const recipient = localStorage.getItem('hourReport_recipient');
+            
+            if (username) document.getElementById('username').value = username;
+            if (displayName) document.getElementById('displayName').value = displayName;
+            if (recipient) document.getElementById('recipient').value = recipient;
+        });
+        
+        function showLoading() {
+            // Show the loading overlay
+            document.getElementById('loading').style.display = 'flex';
+            
+            // Add overlay effect without disabling inputs
+            document.querySelector('.container').style.opacity = '0.5';
+            document.querySelector('.container').style.pointerEvents = 'none';
+            
+            // Allow the form submission to continue
+            return true;
+        }
+    </script>
+</body>
+</html> 
