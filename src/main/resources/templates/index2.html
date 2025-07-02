@@ -7,18 +7,18 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary-color: #f8a5c2; /* Light pink */
-            --primary-dark: #e77c96; /* Darker pink */
-            --secondary-color: #ffeef2; /* Very light pink */
-            --text-color: #5a3d5c; /* Dark purple for text */
-            --light-gray: #f0e6e8;
-            --border-color: #e7d3d8;
-            --success-color: #ff85a2; /* Pink success */
-            --success-dark: #e56b85;
+            --primary-color: #4a90e2; /* Blue */
+            --primary-dark: #3a75c4; /* Darker blue */
+            --secondary-color: #f0f7ff; /* Very light blue */
+            --text-color: #333333; /* Dark gray for text */
+            --light-gray: #e9edf2;
+            --border-color: #d1deee;
+            --success-color: #28a745; /* Green success */
+            --success-dark: #218838;
             --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --box-shadow: 0 4px 6px -1px rgba(248, 165, 194, 0.1), 0 2px 4px -1px rgba(248, 165, 194, 0.06);
+            --box-shadow: 0 4px 6px -1px rgba(74, 144, 226, 0.1), 0 2px 4px -1px rgba(74, 144, 226, 0.06);
             --transition: all 0.3s ease;
-            --gradient-bg: linear-gradient(135deg, #f8a5c2 0%, #ffcad4 100%);
+            --gradient-bg: linear-gradient(135deg, #4a90e2 0%, #5ca3ff 100%);
         }
 
         * {
@@ -30,10 +30,10 @@
         body {
             font-family: var(--font-main);
             line-height: 1.6;
-            background-color: #fff5f7;
+            background-color: #f5f9ff;
             color: var(--text-color);
             padding: 20px;
-            background-image: linear-gradient(to bottom right, #fff5f7, #ffeef2);
+            background-image: linear-gradient(to bottom right, #f5f9ff, #eaf2ff);
             min-height: 100vh;
         }
 
@@ -49,7 +49,7 @@
         }
 
         .container:hover {
-            box-shadow: 0 10px 15px -3px rgba(248, 165, 194, 0.15), 0 4px 6px -2px rgba(248, 165, 194, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(74, 144, 226, 0.15), 0 4px 6px -2px rgba(74, 144, 226, 0.1);
         }
 
         h1 {
@@ -110,7 +110,7 @@
         input[type="password"]:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(248, 165, 194, 0.2);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
         }
 
         input[type="text"]:hover,
@@ -140,7 +140,7 @@
 
         .file-input-container:hover {
             border-color: var(--primary-color);
-            background-color: #ffdde7;
+            background-color: #e0edff;
         }
 
         .file-input-container input[type="file"] {
@@ -168,12 +168,12 @@
 
         .file-input-text {
             font-size: 14px;
-            color: #7d6e70;
+            color: #6e7a8a;
         }
 
         .note {
             font-size: 13px;
-            color: #8a7a7c;
+            color: #7a8798;
             margin-top: 8px;
             transition: var(--transition);
             padding-left: 5px;
@@ -197,20 +197,20 @@
             font-weight: 600;
             letter-spacing: 0.5px;
             transition: var(--transition);
-            box-shadow: 0 4px 6px rgba(248, 165, 194, 0.2);
+            box-shadow: 0 4px 6px rgba(74, 144, 226, 0.2);
             position: relative;
             overflow: hidden;
         }
 
         .btn:hover {
-            background: linear-gradient(135deg, #e77c96 0%, #ffb1c1 100%);
+            background: linear-gradient(135deg, #3a75c4 0%, #4a90e2 100%);
             transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(248, 165, 194, 0.3);
+            box-shadow: 0 6px 8px rgba(74, 144, 226, 0.3);
         }
 
         .btn:active {
             transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(248, 165, 194, 0.2);
+            box-shadow: 0 2px 4px rgba(74, 144, 226, 0.2);
         }
 
         .btn::after {
@@ -250,7 +250,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 245, 247, 0.8);
+            background-color: rgba(245, 249, 255, 0.8);
             z-index: 1000;
             justify-content: center;
             align-items: center;
@@ -264,7 +264,7 @@
             text-align: center;
         }
 
-        /* Hamster Wheel Animation - with pink colors */
+        /* Hamster Wheel Animation - with blue colors */
         .wheel-and-hamster {
           --dur: 1s;
           position: relative;
@@ -290,7 +290,7 @@
         }
 
         .wheel {
-          background: radial-gradient(100% 100% at center,hsla(340,100%,90%,0) 47.8%,hsl(340,100%,80%) 48%);
+          background: radial-gradient(100% 100% at center,hsla(210,100%,90%,0) 47.8%,hsl(210,100%,80%) 48%);
           z-index: 2;
         }
 
@@ -307,10 +307,10 @@
 
         .hamster__head {
           animation: hamsterHead var(--dur) ease-in-out infinite;
-          background: hsl(340,90%,80%);
+          background: hsl(210,90%,80%);
           border-radius: 70% 30% 0 100% / 40% 25% 25% 60%;
-          box-shadow: 0 -0.25em 0 hsl(340,90%,85%) inset,
-                0.75em -1.55em 0 hsl(340,90%,95%) inset;
+          box-shadow: 0 -0.25em 0 hsl(210,90%,85%) inset,
+                0.75em -1.55em 0 hsl(210,90%,95%) inset;
           top: 0;
           left: -2em;
           width: 2.75em;
@@ -320,9 +320,9 @@
 
         .hamster__ear {
           animation: hamsterEar var(--dur) ease-in-out infinite;
-          background: hsl(340,90%,90%);
+          background: hsl(210,90%,90%);
           border-radius: 50%;
-          box-shadow: -0.25em 0 hsl(340,90%,80%) inset;
+          box-shadow: -0.25em 0 hsl(210,90%,80%) inset;
           top: -0.25em;
           right: -0.25em;
           width: 0.75em;
@@ -341,7 +341,7 @@
         }
 
         .hamster__nose {
-          background: hsl(340,90%,75%);
+          background: hsl(210,90%,75%);
           border-radius: 35% 65% 85% 15% / 70% 50% 50% 30%;
           top: 0.75em;
           left: 0;
@@ -351,10 +351,10 @@
 
         .hamster__body {
           animation: hamsterBody var(--dur) ease-in-out infinite;
-          background: hsl(340,90%,95%);
+          background: hsl(210,90%,95%);
           border-radius: 50% 30% 50% 30% / 15% 60% 40% 40%;
-          box-shadow: 0.1em 0.75em 0 hsl(340,90%,80%) inset,
-                0.15em -0.5em 0 hsl(340,90%,85%) inset;
+          box-shadow: 0.1em 0.75em 0 hsl(210,90%,80%) inset,
+                0.15em -0.5em 0 hsl(210,90%,85%) inset;
           top: 0.25em;
           left: 2em;
           width: 4.5em;
@@ -375,13 +375,13 @@
 
         .hamster__limb--fr {
           animation: hamsterFRLimb var(--dur) linear infinite;
-          background: linear-gradient(hsl(340,90%,85%) 80%,hsl(340,90%,75%) 80%);
+          background: linear-gradient(hsl(210,90%,85%) 80%,hsl(210,90%,75%) 80%);
           transform: rotate(15deg) translateZ(-1px);
         }
 
         .hamster__limb--fl {
           animation: hamsterFLLimb var(--dur) linear infinite;
-          background: linear-gradient(hsl(340,90%,95%) 80%,hsl(340,90%,85%) 80%);
+          background: linear-gradient(hsl(210,90%,95%) 80%,hsl(210,90%,85%) 80%);
           transform: rotate(15deg);
         }
 
@@ -398,21 +398,21 @@
 
         .hamster__limb--br {
           animation: hamsterBRLimb var(--dur) linear infinite;
-          background: linear-gradient(hsl(340,90%,85%) 90%,hsl(340,90%,75%) 90%);
+          background: linear-gradient(hsl(210,90%,85%) 90%,hsl(210,90%,75%) 90%);
           transform: rotate(-25deg) translateZ(-1px);
         }
 
         .hamster__limb--bl {
           animation: hamsterBLLimb var(--dur) linear infinite;
-          background: linear-gradient(hsl(340,90%,95%) 90%,hsl(340,90%,85%) 90%);
+          background: linear-gradient(hsl(210,90%,95%) 90%,hsl(210,90%,85%) 90%);
           transform: rotate(-25deg);
         }
 
         .hamster__tail {
           animation: hamsterTail var(--dur) linear infinite;
-          background: hsl(340,90%,90%);
+          background: hsl(210,90%,90%);
           border-radius: 0.25em 50% 50% 0.25em;
-          box-shadow: 0 -0.2em 0 hsl(340,90%,80%) inset;
+          box-shadow: 0 -0.2em 0 hsl(210,90%,80%) inset;
           top: 1.5em;
           right: -0.5em;
           width: 1em;
@@ -423,8 +423,8 @@
 
         .spoke {
           animation: spoke var(--dur) linear infinite;
-          background: radial-gradient(100% 100% at center,hsl(340,100%,80%) 4.8%,hsla(340,100%,80%,0) 5%),
-                linear-gradient(hsla(340,100%,80%,0) 46.9%,hsl(340,100%,80%) 47% 52.9%,hsla(340,100%,80%,0) 53%) 50% 50% / 99% 99% no-repeat;
+          background: radial-gradient(100% 100% at center,hsl(210,100%,80%) 4.8%,hsla(210,100%,80%,0) 5%),
+                linear-gradient(hsla(210,100%,80%,0) 46.9%,hsl(210,100%,80%) 47% 52.9%,hsla(210,100%,80%,0) 53%) 50% 50% / 99% 99% no-repeat;
         }
 
         /* Animations */
@@ -555,7 +555,7 @@
     <div class="container">
         <h1>Gửi Báo Cáo Giờ</h1>
         
-        <form id="emailForm" th:action="@{/process}" th:object="${emailConfig}" method="post" enctype="multipart/form-data" onsubmit="saveFormData(); showLoading(); return true;">
+        <form id="emailForm" th:action="@{/email/process}" th:object="${emailConfig}" method="post" enctype="multipart/form-data" onsubmit="saveFormData(); showLoading(); return true;">
             <!-- SMTP fields that are fixed in EmailConfig class -->
             <input type="hidden" id="smtpServer" name="smtpServer" th:value="*{smtpServer}">
             <input type="hidden" id="smtpPort" name="smtpPort" th:value="*{smtpPort}">
@@ -564,33 +564,33 @@
             
             <div class="form-group">
                 <label for="username"><i class="fas fa-envelope"></i> Địa chỉ email của bạn:</label>
-                <input type="text" id="username" name="username" th:field="*{username}" placeholder="Ví dụ: donglv@ksystem.vn" required>
+                <input type="text" id="username" name="username" th:field="*{username}" placeholder="" required>
                 <p class="note">Sử dụng email đầy đủ của bạn (ví dụ: donglv@ksystem.vn)</p>
             </div>
             
             <div class="form-group">
                 <label for="displayName"><i class="fas fa-user"></i> Tên hiển thị:</label>
-                <input type="text" id="displayName" name="displayName" th:field="*{displayName}" placeholder="Ví dụ: Le Viet Dong (HCM)" required>
+                <input type="text" id="displayName" name="displayName" th:field="*{displayName}" placeholder="" required>
                 <p class="note">Tên này sẽ hiển thị cho người nhận email (ví dụ: Le Viet Dong (HCM))</p>
             </div>
             
             <div class="form-group">
                 <label for="password"><i class="fas fa-lock"></i> Mật khẩu:</label>
-                <input type="password" id="password" name="password" th:field="*{password}" placeholder="Nhập mật khẩu email của bạn" required>
+                <input type="password" id="password" name="password" th:field="*{password}" placeholder="" required>
                 <p class="note">Sử dụng mật khẩu hanbiro</p>
             </div>
             
             <div class="form-group">
                 <label for="recipient"><i class="fas fa-paper-plane"></i> Địa chỉ email người nhận:</label>
-                <input type="email" id="recipient" name="recipient" th:field="*{recipient}" placeholder="Ví dụ: recipient@example.com" required>
-                <p class="note">Đây là địa chỉ email đích cần gửi mail tới</p>
+                <input type="email" id="recipient" name="recipient" th:field="*{recipient}" placeholder="" required>
+                <p class="note">Đây là địa chỉ email đích cần gửi mail tới (ví dụ: devreport@ksystem.vn)</p>
             </div>
             
             <div class="form-group">
                 <label for="excelFile"><i class="fas fa-file-excel"></i> Chọn tệp Excel (.xlsx):</label>
                 <div class="file-input-container">
                     <div class="file-input-icon"><i class="fas fa-file-excel"></i></div>
-                    <div class="file-input-text">Kéo và thả file Excel hoặc nhấp để chọn file</div>
+                    <div class="file-input-text">File excel tải lên phải là file 17H (ví dụ: Hour Report_DevHCM_LeVietDong_20250630_17H.xlsx)</div>
                     <!-- Keep it simple with just name attribute -->
                     <input type="file" id="excelFile" name="excelFile" accept=".xlsx" required>
                 </div>
@@ -622,7 +622,7 @@
         </div>
         <div class="loading-text">Đang xử lý và gửi báo cáo, vui lòng đợi...</div>
     </div>
-    
+
     <script>
         // Hiển thị tên file khi người dùng chọn file
         document.getElementById('excelFile').addEventListener('change', function(e) {

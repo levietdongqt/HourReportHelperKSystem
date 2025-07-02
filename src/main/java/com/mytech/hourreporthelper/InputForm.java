@@ -34,6 +34,7 @@ public class InputForm {
     ArrayList<String> completingTimes = new ArrayList<>();
     private List<Integer>  loops = new ArrayList<>();
     private String employeeName;
+    private String tableData;
     private String dept;
     private List<String> descriptions;
     private List<String> isCompletes;

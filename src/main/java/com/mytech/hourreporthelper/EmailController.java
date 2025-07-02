@@ -32,6 +32,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 @Controller
 @EnableAsync
@@ -40,14 +43,13 @@ public class EmailController {
     @Autowired
     private ReportResultService reportResultService;
 
-    @GetMapping("/")
+    @GetMapping("/email")
     public String showForm(Model model) {
-        System.out.println("showForm server.address=0.0.0.0");
         model.addAttribute("emailConfig", new EmailConfig());
         return "index2";
     }
 
-    @PostMapping("/process")
+    @PostMapping("/email/process")
     public String processForm(@ModelAttribute EmailConfig emailConfig,
             @RequestParam("excelFile") MultipartFile excelFile, Model model) {
         // Log the received data to verify
@@ -56,54 +58,72 @@ public class EmailController {
         System.out.println("Username: " + emailConfig.getUsername());
         System.out.println("Recipient: " + emailConfig.getRecipient());
 
-        // Manually set the file in the EmailConfig object
-        emailConfig.setExcelFile(excelFile);
+        if (excelFile == null || excelFile.isEmpty()) {
+            model.addAttribute("message", "Vui lòng tải lên tệp Excel!");
+            return "result";
+        }
 
-        if (excelFile != null && !excelFile.isEmpty()) {
-            System.out.println("File name: " + excelFile.getOriginalFilename());
-            System.out.println("File size: " + excelFile.getSize());
+        System.out.println("File name: " + excelFile.getOriginalFilename());
+        System.out.println("File size: " + excelFile.getSize());
 
-            // Kiểm tra định dạng file
-            if (!excelFile.getOriginalFilename().toLowerCase().endsWith(".xlsx")) {
-                model.addAttribute("message", "Vui lòng tải lên tệp Excel có định dạng .xlsx!");
-                return "result";
-            }
+        // Kiểm tra định dạng file
+        if (!excelFile.getOriginalFilename().toLowerCase().endsWith(".xlsx")) {
+            model.addAttribute("message", "Vui lòng tải lên tệp Excel có định dạng .xlsx!");
+            return "result";
+        }
 
+        try {
+            // Kiểm tra kết nối SMTP trước
             try {
-                // Kiểm tra kết nối SMTP trước
-                try {
-                    boolean smtpConnected = testSmtpConnection(emailConfig);
-                    if (!smtpConnected) {
-                        model.addAttribute("message",
-                                "Không thể kết nối đến máy chủ SMTP. Vui lòng kiểm tra lại thông tin đăng nhập.");
-                        return "result";
-                    }
-                } catch (jakarta.mail.AuthenticationFailedException e) {
-                    model.addAttribute("message", "Đăng nhập SMTP không thành công: Sai tên đăng nhập hoặc mật khẩu.");
-                    return "result";
-                } catch (Exception e) {
-                    model.addAttribute("message", "Lỗi kết nối đến máy chủ SMTP: " + e.getMessage());
+                boolean smtpConnected = testSmtpConnection(emailConfig);
+                if (!smtpConnected) {
+                    model.addAttribute("message",
+                            "Không thể kết nối đến máy chủ SMTP. Vui lòng kiểm tra lại thông tin đăng nhập.");
                     return "result";
                 }
-
-                // Xử lý file Excel được tải lên
-                processExcelFile(excelFile, emailConfig);
-
-                model.addAttribute("message", "Tệp đã được xử lý thành công! Email đang được gửi trong nền.");
-                model.addAttribute("isShowSuccess", true);
+            } catch (jakarta.mail.AuthenticationFailedException e) {
+                model.addAttribute("message", "Đăng nhập SMTP không thành công: Sai tên đăng nhập hoặc mật khẩu.");
                 return "result";
             } catch (Exception e) {
-                e.printStackTrace();
-                model.addAttribute("message", "Có lỗi xảy ra khi xử lý tệp: " + e.getMessage());
+                model.addAttribute("message", "Lỗi kết nối đến máy chủ SMTP: " + e.getMessage());
+                return "result";
             }
-        } else {
-            model.addAttribute("message", "Vui lòng tải lên tệp Excel!");
+
+            // Xử lý file Excel được tải lên và gửi email
+            try {
+                long startTime = System.currentTimeMillis();
+                processExcelFile(excelFile, emailConfig);
+                long endTime = System.currentTimeMillis();
+                
+                double processingTimeInSeconds = (endTime - startTime) / 1000.0;
+                
+                model.addAttribute("message", String.format(
+                    "Tệp đã được xử lý thành công và tất cả email đã được gửi! (%.1f giây)", 
+                    processingTimeInSeconds));
+                model.addAttribute("isShowSuccess", true);
+            } catch (IOException e) {
+                model.addAttribute("message", "Lỗi khi xử lý file: " + e.getMessage());
+            } catch (ExecutionException e) {
+                // Lỗi khi gửi email
+                model.addAttribute("message", e.getCause().getMessage());
+            } catch (InterruptedException e) {
+                model.addAttribute("message", "Quá trình gửi email bị gián đoạn: " + e.getMessage());
+                // Khôi phục cờ bị gián đoạn
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                model.addAttribute("message", "Lỗi không xác định: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            model.addAttribute("message", "Lỗi hệ thống: " + e.getMessage());
         }
 
         return "result";
     }
 
-    private String processExcelFile(MultipartFile uploadedFile, EmailConfig emailConfig) throws IOException {
+    private String processExcelFile(MultipartFile uploadedFile, EmailConfig emailConfig) 
+            throws IOException, ExecutionException, InterruptedException {
         // Đọc file Excel được tải lên
         Workbook uploadedWorkbook;
         try (InputStream is = uploadedFile.getInputStream()) {
@@ -199,101 +219,171 @@ public class EmailController {
             filePrefix = "Hour Report_DevHCM_" + employeeName + "_" + currentDate + "_";
         }
 
-        // Gửi file gốc
-        String originalFileFullName = filePrefix + reportTime.get(7) + "H" + ".xlsx";
-        File originalFile = File.createTempFile("original_", ".xlsx");
-        try (FileOutputStream fos = new FileOutputStream(originalFile)) {
-            uploadedWorkbook.write(fos);
-        }
+        // Tạo danh sách để lưu trữ tất cả các CompletableFuture
+        List<CompletableFuture<Void>> allEmailTasks = new ArrayList<>();
+        // Lưu danh sách tên file đã xử lý để báo cáo lỗi chi tiết nếu có
+        List<String> processedFileNames = new ArrayList<>();
+        // Lưu danh sách file tạm để xóa sau khi xử lý xong
+        List<File> tempFiles = new ArrayList<>();
 
-        // Lưu thông tin file gốc vào report result
-        String originalFileNameWithoutExt = originalFileFullName;
-        if (originalFileFullName.toLowerCase().endsWith(".xlsx")) {
-            originalFileNameWithoutExt = originalFileFullName.substring(0, originalFileFullName.length() - 5);
-        }
-        reportResultService.addUploadResult(emailConfig.getUsername(), originalFileNameWithoutExt);
+        try {
+            // Gửi file gốc
+            String originalFileFullName = filePrefix + reportTime.get(7) + "H" + ".xlsx";
+            File originalFile = File.createTempFile("original_", ".xlsx");
+            tempFiles.add(originalFile); // Thêm file vào danh sách để xóa sau
+            
+            try (FileOutputStream fos = new FileOutputStream(originalFile)) {
+                uploadedWorkbook.write(fos);
+            }
 
-        // Gửi email cho file gốc
-        sendEmailAsync(emailConfig, originalFile, originalFileFullName);
+            // Lưu thông tin file gốc vào report result
+            String originalFileNameWithoutExt = originalFileFullName;
+            if (originalFileFullName.toLowerCase().endsWith(".xlsx")) {
+                originalFileNameWithoutExt = originalFileFullName.substring(0, originalFileFullName.length() - 5);
+            }
+            reportResultService.addUploadResult(emailConfig.getUsername(), originalFileNameWithoutExt);
 
-        // Tạo và gửi 7 file Excel còn lại
-        for (int i = 0; i < 7; i++) {
-            if (descriptions.get(i).isEmpty())
-                continue;
+            // Gửi email cho file gốc và thêm nhiệm vụ vào danh sách
+            CompletableFuture<Void> originalEmailTask = sendEmailAsync(emailConfig, originalFile, originalFileFullName);
+            allEmailTasks.add(originalEmailTask);
+            processedFileNames.add(originalFileFullName);
 
-            String fileName = filePrefix + reportTime.get(i) + "H" + ".xlsx";
-            File tempFile = File.createTempFile("report_" + i + "_", ".xlsx");
+            // Tạo và gửi 7 file Excel còn lại
+            for (int i = 0; i < 7; i++) {
+                if (descriptions.get(i).isEmpty())
+                    continue;
 
-            try (XSSFWorkbook workbook = new XSSFWorkbook();
-                    FileOutputStream fos = new FileOutputStream(tempFile)) {
+                String fileName = filePrefix + reportTime.get(i) + "H" + ".xlsx";
+                File tempFile = File.createTempFile("report_" + i + "_", ".xlsx");
+                tempFiles.add(tempFile); // Thêm file vào danh sách để xóa sau
 
-                Sheet sheet = workbook.createSheet("Sheet 1");
+                try (XSSFWorkbook workbook = new XSSFWorkbook();
+                        FileOutputStream fos = new FileOutputStream(tempFile)) {
 
-                // Tạo header
-                Row headerRow = sheet.createRow(0);
-                CellStyle cellStyle = getCellStyleForHeader(workbook);
+                    Sheet sheet = workbook.createSheet("Sheet 1");
 
-                handleCellString(headerRow, 0, cellStyle, "ReportDate");
-                handleCellString(headerRow, 1, cellStyle, "Report time");
-                handleCellString(headerRow, 2, cellStyle, "Starting time");
-                handleCellString(headerRow, 3, cellStyle, "Job Content");
-                handleCellString(headerRow, 4, cellStyle, "Completed Y/N");
-                handleCellString(headerRow, 5, cellStyle, "Completing time");
-                handleCellString(headerRow, 6, cellStyle, "Remark");
+                    // Tạo header
+                    Row headerRow = sheet.createRow(0);
+                    CellStyle cellStyle = getCellStyleForHeader(workbook);
 
-                // Thiết lập độ rộng cột
-                sheet.setColumnWidth(0, 3200);
-                sheet.setColumnWidth(1, 3200);
-                sheet.setColumnWidth(2, 3100);
-                sheet.setColumnWidth(3, 26000);
-                sheet.setColumnWidth(4, 4000);
-                sheet.setColumnWidth(5, 4000);
-                sheet.setColumnWidth(6, 15000);
+                    handleCellString(headerRow, 0, cellStyle, "ReportDate");
+                    handleCellString(headerRow, 1, cellStyle, "Report time");
+                    handleCellString(headerRow, 2, cellStyle, "Starting time");
+                    handleCellString(headerRow, 3, cellStyle, "Job Content");
+                    handleCellString(headerRow, 4, cellStyle, "Completed Y/N");
+                    handleCellString(headerRow, 5, cellStyle, "Completing time");
+                    handleCellString(headerRow, 6, cellStyle, "Remark");
 
-                // Thêm dữ liệu
-                for (int rowNum = 0; rowNum <= i; rowNum++) {
-                    Row row = sheet.createRow(rowNum + 1);
-                    row.setHeight((short) -1);
+                    // Thiết lập độ rộng cột
+                    sheet.setColumnWidth(0, 3200);
+                    sheet.setColumnWidth(1, 3200);
+                    sheet.setColumnWidth(2, 3100);
+                    sheet.setColumnWidth(3, 26000);
+                    sheet.setColumnWidth(4, 4000);
+                    sheet.setColumnWidth(5, 4000);
+                    sheet.setColumnWidth(6, 15000);
 
-                    CellStyle cellStyle2 = getCelStyleForData(workbook);
+                    // Thêm dữ liệu
+                    for (int rowNum = 0; rowNum <= i; rowNum++) {
+                        Row row = sheet.createRow(rowNum + 1);
+                        row.setHeight((short) -1);
 
-                    Cell cellR0 = row.createCell(0);
-                    cellR0.setCellStyle(cellStyle);
-                    cellR0.setCellValue(reportDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        CellStyle cellStyle2 = getCelStyleForData(workbook);
 
-                    Cell cellR1 = row.createCell(1);
-                    cellR1.setCellStyle(cellStyle);
-                    cellR1.setCellValue(reportTime.get(rowNum));
+                        Cell cellR0 = row.createCell(0);
+                        cellR0.setCellStyle(cellStyle);
+                        cellR0.setCellValue(reportDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
 
-                    Cell cellR2 = row.createCell(2);
-                    cellR2.setCellStyle(cellStyle);
-                    cellR2.setCellValue(
-                            startTimes.get(rowNum).isEmpty() ? startTime.get(rowNum) : startTimes.get(rowNum));
+                        Cell cellR1 = row.createCell(1);
+                        cellR1.setCellStyle(cellStyle);
+                        cellR1.setCellValue(reportTime.get(rowNum));
 
-                    Cell jobContentCell = row.createCell(3);
-                    jobContentCell.setCellStyle(cellStyle2);
-                    jobContentCell.setCellValue(descriptions.get(rowNum));
+                        Cell cellR2 = row.createCell(2);
+                        cellR2.setCellStyle(cellStyle);
+                        cellR2.setCellValue(
+                                startTimes.get(rowNum).isEmpty() ? startTime.get(rowNum) : startTimes.get(rowNum));
 
-                    Cell cellComplete = row.createCell(4);
-                    cellComplete.setCellStyle(cellStyle);
-                    cellComplete.setCellValue(isCompletes.get(rowNum));
+                        Cell jobContentCell = row.createCell(3);
+                        jobContentCell.setCellStyle(cellStyle2);
+                        jobContentCell.setCellValue(descriptions.get(rowNum));
 
-                    Cell cellR5 = row.createCell(5);
-                    cellR5.setCellStyle(cellStyle2);
-                    cellR5.setCellValue(completingTimes.get(rowNum).isEmpty() ? "" : completingTimes.get(rowNum));
+                        Cell cellComplete = row.createCell(4);
+                        cellComplete.setCellStyle(cellStyle);
+                        cellComplete.setCellValue(isCompletes.get(rowNum));
 
-                    Cell cellR6 = row.createCell(6);
-                    cellR6.setCellStyle(cellStyle2);
-                    cellR6.setCellValue(remarks.get(rowNum));
+                        Cell cellR5 = row.createCell(5);
+                        cellR5.setCellStyle(cellStyle2);
+                        cellR5.setCellValue(completingTimes.get(rowNum).isEmpty() ? "" : completingTimes.get(rowNum));
+
+                        Cell cellR6 = row.createCell(6);
+                        cellR6.setCellStyle(cellStyle2);
+                        cellR6.setCellValue(remarks.get(rowNum));
+                    }
+
+                    workbook.write(fos);
+
+                    // Gửi email cho mỗi file được tạo và thêm nhiệm vụ vào danh sách
+                    CompletableFuture<Void> emailTask = sendEmailAsync(emailConfig, tempFile, fileName);
+                    allEmailTasks.add(emailTask);
+                    processedFileNames.add(fileName);
                 }
+            }
 
-                workbook.write(fos);
-
-                // Gửi email cho mỗi file được tạo
-                sendEmailAsync(emailConfig, tempFile, fileName);
+            try {
+                // Đợi tất cả các email hoàn thành - tương tự như await Task.WhenAll trong C#
+                CompletableFuture<Void> allTasksFuture = CompletableFuture.allOf(
+                    allEmailTasks.toArray(new CompletableFuture[0])
+                );
+                
+                // Chờ tất cả các email gửi xong
+                allTasksFuture.get(); // Tương tự như await trong C#
+                
+                System.out.println("Tất cả các email đã được gửi thành công!");
+            } catch (ExecutionException e) {
+                // Khi một trong các task bị lỗi
+                StringBuilder errorMessage = new StringBuilder("Lỗi khi gửi một số email: ");
+                
+                // Kiểm tra từng task để xem cái nào bị lỗi
+                for (int i = 0; i < allEmailTasks.size(); i++) {
+                    CompletableFuture<Void> task = allEmailTasks.get(i);
+                    String fileName = processedFileNames.get(i);
+                    
+                    try {
+                        // Nếu task đã hoàn thành, điều này sẽ không ném ngoại lệ
+                        if (task.isDone() && !task.isCompletedExceptionally()) {
+                            continue;
+                        }
+                        
+                        // Nếu task bị lỗi, điều này sẽ ném ngoại lệ
+                        task.getNow(null);
+                    } catch (Exception ex) {
+                        errorMessage.append("\n- File '").append(fileName).append("': ").append(ex.getMessage());
+                    }
+                }
+                
+                // Ném ngoại lệ với thông tin chi tiết
+                throw new RuntimeException(errorMessage.toString(), e.getCause());
+            }
+        } catch (IOException e) {
+            throw new IOException("Lỗi xử lý file Excel: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi không xác định khi xử lý file hoặc gửi email: " + e.getMessage(), e);
+        } finally {
+            // Xóa tất cả các file tạm để giải phóng dung lượng ổ đĩa
+            for (File file : tempFiles) {
+                try {
+                    if (file != null && file.exists()) {
+                        boolean deleted = file.delete();
+                        if (!deleted) {
+                            System.err.println("Không thể xóa file tạm: " + file.getAbsolutePath());
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Lỗi khi xóa file tạm " + file.getName() + ": " + e.getMessage());
+                }
             }
         }
-
+        
         return currentDate;
     }
 
@@ -362,17 +452,28 @@ public class EmailController {
      */
     @Async
     private CompletableFuture<Void> sendEmailAsync(EmailConfig emailConfig, File attachment, String fileName) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                sendEmail(emailConfig, attachment, fileName);
-            } catch (jakarta.mail.AuthenticationFailedException e) {
-                System.err.println("Lỗi xác thực khi gửi email cho file " + fileName + ": " + e.getMessage());
-            } catch (MessagingException e) {
-                System.err.println("Lỗi khi gửi email cho file " + fileName + ": " + e.getMessage());
-            } catch (Exception e) {
-                System.err.println("Lỗi không xác định khi gửi email cho file " + fileName + ": " + e.getMessage());
-            }
-        });
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        
+        try {
+            // Gọi phương thức gửi email đồng bộ
+            sendEmail(emailConfig, attachment, fileName);
+            future.complete(null); // Hoàn thành thành công
+            System.out.println("Email gửi thành công cho file: " + fileName);
+        } catch (jakarta.mail.AuthenticationFailedException e) {
+            String errorMsg = "Lỗi xác thực khi gửi email cho file " + fileName + ": " + e.getMessage();
+            System.err.println(errorMsg);
+            future.completeExceptionally(new RuntimeException(errorMsg, e));
+        } catch (MessagingException e) {
+            String errorMsg = "Lỗi khi gửi email cho file " + fileName + ": " + e.getMessage();
+            System.err.println(errorMsg);
+            future.completeExceptionally(new RuntimeException(errorMsg, e));
+        } catch (Exception e) {
+            String errorMsg = "Lỗi không xác định khi gửi email cho file " + fileName + ": " + e.getMessage();
+            System.err.println(errorMsg);
+            future.completeExceptionally(new RuntimeException(errorMsg, e));
+        }
+        
+        return future;
     }
 
     /**

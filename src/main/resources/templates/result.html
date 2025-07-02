@@ -53,6 +53,15 @@
             background-color: #0069d9;
         }
     </style>
+    <script>
+        // Function to set a session flag when navigating back
+        function goBackToHome() {
+            // Store a flag in sessionStorage to indicate we're navigating back
+            sessionStorage.setItem('returningFromResult', 'true');
+            window.location.href = '/';
+            return false;
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -62,7 +71,7 @@
             <p th:text="${message}"></p>
         </div>
         
-        <a href="/" class="btn">Quay lại trang chủ</a>
+        <!-- <a href="/" class="btn" onclick="return goBackToHome();">Quay lại trang chủ</a> -->
     </div>
 </body>
 </html> 

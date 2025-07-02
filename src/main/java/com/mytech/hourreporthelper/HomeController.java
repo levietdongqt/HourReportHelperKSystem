@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,16 +16,27 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -34,75 +46,123 @@ import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Controller
 public class HomeController {
-    @GetMapping("/old")
-    public String showForm(Model model,
-                           @RequestParam(value = "success", required = false) String success,
-                           @RequestParam(value = "currentDate", required = false) String currentDate,
-                           @RequestParam(value = "employeeName", required = false) String employeeName) {
-        boolean isShowSuccess = success != null;
-        model.addAttribute("isShowSuccess", isShowSuccess);
-        model.addAttribute("currentDate", currentDate);
-        model.addAttribute("employeeName", employeeName);
+    
+    @Autowired
+    private ReportResultService reportResultService;
+    
+    @GetMapping("/")
+    public String showCombinedForm(Model model) {
+        // Add email config model attribute
+        model.addAttribute("emailConfig", new EmailConfig());
+        
+        // Add report form model attribute
+        InputForm inputForm = new InputForm();
+        model.addAttribute("form", inputForm);
+        
+        // Set default values for report
         model.addAttribute("now", LocalDate.now());
-        model.addAttribute("form", new InputForm());
-        return "index";
+        model.addAttribute("isShowSuccess", false);
+        
+        return "combined-form";
     }
 
-    @GetMapping("/old/admin")
+    @GetMapping("/admin")
     public String admin(Model model) {
         model.addAttribute("login", new login());
         return "admin";
     }
 
+    @PostMapping("/submit-combined")
+    public String submitCombinedForm(
+            @ModelAttribute("emailConfig") EmailConfig emailConfig,
+            @ModelAttribute("form") InputForm form,
+            @RequestParam(name = "tableData",required = false) String tableDataJson,
+            Model model) throws IOException, InterruptedException, ExecutionException {
+        
+        try {
+            // Parse table data from JSON
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode tableData = mapper.readTree(tableDataJson);
+            
+            // Update form with table data
+            form.setStartTimes(new ArrayList<>(Arrays.asList(mapper.convertValue(tableData.get("startTimes"), String[].class))));
+            form.setDescriptions(new ArrayList<>(Arrays.asList(mapper.convertValue(tableData.get("descriptions"), String[].class))));
+            form.setIsCompletes(new ArrayList<>(Arrays.asList(mapper.convertValue(tableData.get("isCompletes"), String[].class))));
+            form.setCompletingTimes(new ArrayList<>(Arrays.asList(mapper.convertValue(tableData.get("completingTimes"), String[].class))));
+            form.setRemarks(new ArrayList<>(Arrays.asList(mapper.convertValue(tableData.get("remarks"), String[].class))));
 
-    @PostMapping("/old/login")
-    public ResponseEntity<Resource> login(@ModelAttribute login form) throws IOException {
-        // Kiểm tra username và password
-        if (!form.getPassword().equals("donglv1!00") || !form.getUsername().equals("donglv")) {
-            return ResponseEntity.badRequest().body(null);
-        }
-
-        // Định nghĩa thư mục nguồn và tệp zip tạm
-        Path sourceDir = Paths.get("/tmp");
-        Path zipFile = Paths.get("/tmp/result.zip"); // Tệp zip sẽ được lưu tạm ở thư mục /tmp
-
-        // Kiểm tra sự tồn tại của thư mục nguồn
-        if (!Files.exists(sourceDir) || !Files.isDirectory(sourceDir)) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-
-        // Nén thư mục
-        FileUtil.zipDirectory(sourceDir, zipFile);
-
-        // Chuyển tệp zip thành Resource để gửi cho người dùng
-        Resource resource = new FileSystemResource(zipFile);
-
-        if (!resource.exists()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        // Sử dụng ScheduledExecutorService để xóa tệp zip sau 5 giây
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        executor.schedule(() -> {
+            // Kiểm tra kết nối SMTP trước
             try {
-                // Xóa tệp zip
-                Files.deleteIfExists(zipFile);
-            } catch (IOException e) {
-                e.printStackTrace(); // Log lỗi nếu không xóa được
+                boolean smtpConnected = testSmtpConnection(emailConfig);
+                if (!smtpConnected) {
+                    model.addAttribute("message",
+                            "Không thể kết nối đến máy chủ SMTP. Vui lòng kiểm tra lại thông tin đăng nhập.");
+                    return "result";
+                }
+            } catch (jakarta.mail.AuthenticationFailedException e) {
+                model.addAttribute("message", "Đăng nhập SMTP không thành công: Sai tên đăng nhập hoặc mật khẩu.");
+                return "result";
+            } catch (Exception e) {
+                model.addAttribute("message", "Lỗi kết nối đến máy chủ SMTP: " + e.getMessage());
+                return "result";
             }
-        }, 10, TimeUnit.SECONDS);
-
-        // Trả về tệp zip cho người dùng
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipFile.getFileName() + "\"")
-                .body(resource);
+            
+            // Tạo các file báo cáo Excel
+            List<File> createdFiles = createReportFiles(form);
+            
+            // Gửi email với các file báo cáo
+            try {
+                long startTime = System.currentTimeMillis();
+                sendEmailsWithReports(emailConfig, createdFiles, form);
+                long endTime = System.currentTimeMillis();
+                
+                double processingTimeInSeconds = (endTime - startTime) / 1000.0;
+                
+                model.addAttribute("message", String.format(
+                    "Tệp đã được xử lý thành công và tất cả email đã được gửi! (%.1f giây)", 
+                    processingTimeInSeconds));
+                model.addAttribute("isShowSuccess", true);
+            } catch (ExecutionException e) {
+                model.addAttribute("message", e.getCause().getMessage());
+            } catch (InterruptedException e) {
+                model.addAttribute("message", "Quá trình gửi email bị gián đoạn: " + e.getMessage());
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                model.addAttribute("message", "Lỗi không xác định: " + e.getMessage());
+                e.printStackTrace();
+            } finally {
+                // Xóa các file tạm
+                for (File file : createdFiles) {
+                    try {
+                        if (file != null && file.exists()) {
+                            boolean deleted = file.delete();
+                            if (!deleted) {
+                                System.err.println("Không thể xóa file tạm: " + file.getAbsolutePath());
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Lỗi khi xóa file tạm: " + e.getMessage());
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            model.addAttribute("message", "Lỗi hệ thống: " + e.getMessage());
+        }
+        
+        return "result";
     }
 
-
-    @PostMapping("/old/submit")
-    public String submitForm(@ModelAttribute InputForm form) throws IOException, InterruptedException {
+    // Phương thức để tạo các file báo cáo Excel và trả về danh sách các file đã tạo
+    private List<File> createReportFiles(InputForm form) throws IOException {
+        List<File> createdFiles = new ArrayList<>();
+        
         DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyyMMdd");
         LocalDate now = form.getReportDate();
@@ -127,30 +187,23 @@ public class HomeController {
         startTime.put(5, "14:00");
         startTime.put(6, "15:00");
         startTime.put(7, "16:00");
+        
+        // Sử dụng thư mục tạm của hệ thống để tạo file
+        String tempDir = System.getProperty("java.io.tmpdir");
         String fileNameTemp = "Hour Report_" + form.getDept() + "_" + form.getEmployeeName() + "_" + currentDate + "_";
-        File parentDir = null;
 
         for (int i = 0; i < 8; i++) {
             if (form.getDescriptions().get(i).isEmpty()) continue;
 
             String fileName = fileNameTemp + reportTime.get(i) + "H" + ".xlsx";
-            String location = "/tmp/" + form.getEmployeeName() + "/HourReport/" + currentDate + "/" + fileName;
-            File file = new File(location);
-            parentDir = file.getParentFile();
-            if (parentDir != null && !parentDir.exists()) {
-                if (parentDir.getParentFile().exists() && parentDir.getParentFile() != null) {
-                    parentDir.getParentFile().mkdirs();
-                }
-                parentDir.mkdirs();
-            }
-            try (XSSFWorkbook workbook = new XSSFWorkbook();
+            File file = File.createTempFile("report_" + i + "_", ".xlsx");
+            createdFiles.add(file);
 
+            try (XSSFWorkbook workbook = new XSSFWorkbook();
                  FileOutputStream fos = new FileOutputStream(file)) {
                 Sheet sheet = workbook.createSheet("Sheet 1");
 
-
                 Row headerRow = sheet.createRow(0);
-
                 CellStyle cellStyle = getCellStyleForHeader(workbook);
 
                 Cell cell0 = handleCellString(headerRow, 0, cellStyle, "ReportDate");
@@ -161,16 +214,15 @@ public class HomeController {
                 Cell cell5 = handleCellString(headerRow, 5, cellStyle, "Completing time");
                 Cell cell6 = handleCellString(headerRow, 6, cellStyle, "Remark");
 
-                sheet.setColumnWidth(1, 3200);
-                sheet.setColumnWidth(3, 26000);
                 sheet.setColumnWidth(0, 3200);
-                sheet.setColumnWidth(2, 3100);
                 sheet.setColumnWidth(1, 3200);
+                sheet.setColumnWidth(2, 3100);
+                sheet.setColumnWidth(3, 26000);
                 sheet.setColumnWidth(4, 4000);
                 sheet.setColumnWidth(5, 4000);
                 sheet.setColumnWidth(6, 15000);
-                for (int rowNum = 0; rowNum <= 7; rowNum++) {
-                    if (rowNum > i) break;
+                
+                for (int rowNum = 0; rowNum <= i; rowNum++) {
                     Row row = sheet.createRow(rowNum + 1);
                     row.setHeight((short) -1);
                     String description = form.getDescriptions().get(rowNum);
@@ -186,7 +238,7 @@ public class HomeController {
 
                     Cell cellR2 = row.createCell(2);
                     cellR2.setCellStyle(cellStyle);
-                    cellR2.setCellValue(form.startTimes.get(rowNum).isEmpty() ? "" : form.startTimes.get(rowNum));
+                    cellR2.setCellValue(form.startTimes.get(rowNum).isEmpty() ? startTime.get(rowNum) : form.startTimes.get(rowNum));
 
                     Cell jobContentCell = row.createCell(3);
                     jobContentCell.setCellStyle(cellStyle2);
@@ -204,96 +256,259 @@ public class HomeController {
                     cellR6.setCellStyle(cellStyle2);
                     cellR6.setCellValue(form.getRemarks().get(rowNum));
                 }
+                
                 workbook.write(fos);
             }
         }
 
-        Path sourceDir = Paths.get("/tmp/" + form.getEmployeeName());
-        Path filePath = sourceDir.resolve("hello.txt");
-        String content = currentDate + System.lineSeparator(); // Thêm một dòng mới
+        return createdFiles;
+    }
+    
+    // Phương thức để gửi email với các file báo cáo
+    private void sendEmailsWithReports(EmailConfig emailConfig, List<File> reportFiles, InputForm form) 
+            throws ExecutionException, InterruptedException {
+        // Tạo danh sách để lưu trữ tất cả các CompletableFuture
+        List<CompletableFuture<Void>> allEmailTasks = new ArrayList<>();
+        // Lưu danh sách tên file đã xử lý để báo cáo lỗi chi tiết nếu có
+        List<String> processedFileNames = new ArrayList<>();
+        
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyyMMdd");
+        String currentDate = form.getReportDate().format(formatter2);
+        String fileNamePrefix = "Hour Report_" + form.getDept() + "_" + form.getEmployeeName() + "_" + currentDate + "_";
+        
+        HashMap<Integer, String> reportTime = new HashMap<>();
+        reportTime.put(0, "09");
+        reportTime.put(1, "10");
+        reportTime.put(2, "11");
+        reportTime.put(3, "12");
+        reportTime.put(4, "14");
+        reportTime.put(5, "15");
+        reportTime.put(6, "16");
+        reportTime.put(7, "17");
+        
+        try {
+            int index = 0;
+            for (File file : reportFiles) {
+                String reportHour = reportTime.get(index);
+                String fileName = fileNamePrefix + reportHour + "H.xlsx";
+                
+                // Lưu thông tin file vào report result
+                String fileNameWithoutExt = fileName;
+                if (fileName.toLowerCase().endsWith(".xlsx")) {
+                    fileNameWithoutExt = fileName.substring(0, fileName.length() - 5);
+                }
+                reportResultService.addUploadResult(emailConfig.getUsername(), fileNameWithoutExt);
+                
+                // Gửi email với file báo cáo
+                CompletableFuture<Void> emailTask = sendEmailAsync(emailConfig, file, fileName);
+                allEmailTasks.add(emailTask);
+                processedFileNames.add(fileName);
+                
+                index++;
+            }
+            
+            // Đợi tất cả các email hoàn thành
+            CompletableFuture<Void> allTasksFuture = CompletableFuture.allOf(
+                allEmailTasks.toArray(new CompletableFuture[0])
+            );
+            
+            // Chờ tất cả các email gửi xong
+            allTasksFuture.get();
+            
+            System.out.println("Tất cả các email đã được gửi thành công!");
+        } catch (ExecutionException e) {
+            // Khi một trong các task bị lỗi
+            StringBuilder errorMessage = new StringBuilder("Lỗi khi gửi một số email: ");
+            
+            // Kiểm tra từng task để xem cái nào bị lỗi
+            for (int i = 0; i < allEmailTasks.size(); i++) {
+                CompletableFuture<Void> task = allEmailTasks.get(i);
+                String fileName = processedFileNames.get(i);
+                
+                try {
+                    // Nếu task đã hoàn thành, điều này sẽ không ném ngoại lệ
+                    if (task.isDone() && !task.isCompletedExceptionally()) {
+                        continue;
+                    }
+                    
+                    // Nếu task bị lỗi, điều này sẽ ném ngoại lệ
+                    task.getNow(null);
+                } catch (Exception ex) {
+                    errorMessage.append("\n- File '").append(fileName).append("': ").append(ex.getMessage());
+                }
+            }
+            
+            // Ném ngoại lệ với thông tin chi tiết
+            throw new ExecutionException(errorMessage.toString(), e.getCause());
+        }
+    }
+    
+    // Các phương thức hỗ trợ cho việc gửi email
+    
+    @org.springframework.scheduling.annotation.Async
+    private CompletableFuture<Void> sendEmailAsync(EmailConfig emailConfig, File attachment, String fileName) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        
+        try {
+            // Gọi phương thức gửi email đồng bộ
+            sendEmail(emailConfig, attachment, fileName);
+            future.complete(null); // Hoàn thành thành công
+            System.out.println("Email gửi thành công cho file: " + fileName);
+        } catch (jakarta.mail.AuthenticationFailedException e) {
+            String errorMsg = "Lỗi xác thực khi gửi email cho file " + fileName + ": " + e.getMessage();
+            System.err.println(errorMsg);
+            future.completeExceptionally(new RuntimeException(errorMsg, e));
+        } catch (MessagingException e) {
+            String errorMsg = "Lỗi khi gửi email cho file " + fileName + ": " + e.getMessage();
+            System.err.println(errorMsg);
+            future.completeExceptionally(new RuntimeException(errorMsg, e));
+        } catch (Exception e) {
+            String errorMsg = "Lỗi không xác định khi gửi email cho file " + fileName + ": " + e.getMessage();
+            System.err.println(errorMsg);
+            future.completeExceptionally(new RuntimeException(errorMsg, e));
+        }
+        
+        return future;
+    }
+    
+    private void sendEmail(EmailConfig emailConfig, File attachment, String fileName) throws MessagingException {
+        // Tạo JavaMailSender từ thông tin cấu hình
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        mailSender.setHost(emailConfig.getSmtpServer());
+        mailSender.setPort(Integer.parseInt(emailConfig.getSmtpPort()));
+
+        // Sử dụng email đầy đủ làm username thay vì chỉ lấy phần local
+        String username = emailConfig.getUsername();
+        mailSender.setUsername(username);
+        mailSender.setPassword(emailConfig.getPassword());
+
+        // Cấu hình SSL/TLS và các thuộc tính khác
+        Properties props = mailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "false"); // Tắt STARTTLS vì đã dùng SSL
+        props.put("mail.smtp.ssl.enable", "true");
+        props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+        props.put("mail.smtp.socketFactory.port", emailConfig.getSmtpPort());
+
+        // Cấu hình đặc biệt cho Hanbiro Groupware
+        props.put("mail.smtp.from", username);
+        props.put("mail.smtp.sendpartial", "true");
+        props.put("mail.smtp.userset", "true");
+        props.put("mail.store.protocol", "imaps");
+
+        // Tắt chế độ debug để tránh log nhiều
+        props.put("mail.debug", "false");
+        props.put("mail.debug.auth", "false");
 
         try {
-            // Tạo thư mục nếu chưa tồn tại
-            Files.createDirectories(sourceDir);
-            // Ghi nội dung vào tệp hello.txt với tùy chọn append
-            Files.write(filePath, content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-            System.out.println("File đã được ghi thành công tại: " + filePath);
-        } catch (IOException e) {
-            System.out.println("Có lỗi xảy ra: " + e.getMessage());
-        }
+            // Tạo Session riêng để có thể cấu hình lưu email đã gửi
+            jakarta.mail.Session session = jakarta.mail.Session.getInstance(props, new jakarta.mail.Authenticator() {
+                @Override
+                protected jakarta.mail.PasswordAuthentication getPasswordAuthentication() {
+                    return new jakarta.mail.PasswordAuthentication(username, emailConfig.getPassword());
+                }
+            });
+            session.setDebug(false);
 
+            // Cấu hình cơ bản
+            session.getProperties().put("mail.smtp.sendpartial", "true");
 
-        return "redirect:/?success=true&currentDate=" + currentDate + "&employeeName=" + form.getEmployeeName();
+            // Sử dụng session đã cấu hình
+            mailSender.setSession(session);
 
-    }
+            // Tạo email
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-    @GetMapping("/downloadAll/{currentDate}")
-    public ResponseEntity<Resource> downloadAllFiles(@PathVariable String currentDate, @RequestParam String employeeName) throws IOException {
-        // Thư mục chứa các file cần tải
+            // Sử dụng định dạng "Tên <email>" để hiển thị tên người gửi
+            helper.setFrom(username, emailConfig.getDisplayName());
+            helper.setTo(emailConfig.getRecipient());
 
-        Path sourceDir = Paths.get("/tmp/" + employeeName + "/HourReport/" + currentDate);
+            // Thêm CC cho người gửi để theo dõi email đã gửi
+            helper.setCc(username);
 
-        // Tạo tệp zip tạm để lưu các file
-        Path zipFile = Paths.get("/tmp/" + employeeName + "/" + currentDate + ".zip");
-
-        // Tạo tệp zip từ thư mục
-        FileUtil.zipDirectory(sourceDir, zipFile);
-        // Chuyển tệp zip thành Resource để gửi cho người dùng
-        Resource resource = new FileSystemResource(zipFile);
-        if (!resource.exists()) {
-            return ResponseEntity.notFound().build();
-        }
-        new Thread(() -> {
-            try {
-                // Thêm khoảng thời gian chờ (ví dụ 10 giây)
-                Thread.sleep(5000);
-
-                // Xóa tệp zip
-                Files.deleteIfExists(zipFile);
-
-                // Xóa thư mục và tất cả file bên trong
-                deleteDirectoryRecursively(sourceDir.getParent());  // Xóa cả thư mục /HourReport/ của employeeName
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace(); // Log lỗi nếu không xóa được
+            // Loại bỏ đuôi .xlsx khỏi subject
+            String subject = fileName;
+            if (fileName.toLowerCase().endsWith(".xlsx")) {
+                subject = fileName.substring(0, fileName.length() - 5);
             }
-        }).start();
-        // Xóa tệp zip sau khi phục vụ người dùng (nếu cần)
-        // Files.delete(zipFile);
-        //deleteDirectoryRecursively(sourceDir.getParent());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipFile.getFileName() + "\"")
-                .body(resource);
-    }
+            helper.setSubject(subject);
 
-    private void deleteDirectoryRecursively(Path path) throws IOException {
-        if (Files.exists(path)) {
-            // Sử dụng Files.walk để xử lý đệ quy an toàn
-            try (Stream<Path> walk = Files.walk(path)) {
-                walk.sorted(Comparator.reverseOrder()) // Đảm bảo xóa từ trong ra ngoài
-                        .map(Path::toFile)
-                        .forEach(File::delete);
-            }
+            helper.setText(""); // Nội dung email để trống
+
+            // Đính kèm file
+            FileSystemResource file = new FileSystemResource(attachment);
+            helper.addAttachment(fileName, file);
+
+            // Gửi email
+            //DONGLV
+            mailSender.send(message);
+        } catch (jakarta.mail.AuthenticationFailedException e) {
+            System.err.println("Lỗi xác thực khi gửi email: " + e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi gửi email cho file " + fileName + ": " + e.getMessage());
+            // Throw as MessagingException so that it can be handled by the calling method
+            throw new MessagingException("Lỗi gửi email: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Kiểm tra kết nối đến máy chủ SMTP
+     */
+    private boolean testSmtpConnection(EmailConfig emailConfig) throws jakarta.mail.AuthenticationFailedException {
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        mailSender.setHost(emailConfig.getSmtpServer());
+        mailSender.setPort(Integer.parseInt(emailConfig.getSmtpPort()));
+
+        String username = emailConfig.getUsername();
+        mailSender.setUsername(username);
+        mailSender.setPassword(emailConfig.getPassword());
+
+        Properties props = mailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "false");
+        props.put("mail.smtp.ssl.enable", "true");
+        props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+        props.put("mail.smtp.socketFactory.port", emailConfig.getSmtpPort());
+
+        // Minimize debug output to avoid excessive logging
+        props.put("mail.debug", "false");
+        props.put("mail.debug.auth", "false");
+
+        try {
+            mailSender.testConnection();
+            System.out.println("Kết nối SMTP thành công!");
+            return true;
+        } catch (jakarta.mail.AuthenticationFailedException e) {
+            System.err.println("Lỗi xác thực SMTP: " + e.getMessage());
+            // Rethrow to be handled by the calling method
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Lỗi kết nối SMTP: " + e.getMessage());
+            return false;
         }
     }
 
     private static Cell handleCellString(Row headerRow, int col, CellStyle cellStyle, String value) {
-        Cell cell0 = headerRow.createCell(col);
-        cell0.setCellStyle(cellStyle);
-        cell0.setCellValue(value);
-        return cell0;
+        Cell cell = headerRow.createCell(col);
+        cell.setCellStyle(cellStyle);
+        cell.setCellValue(value);
+        return cell;
     }
 
     private static CellStyle getCellStyleForHeader(XSSFWorkbook workbook) {
         Font font = workbook.createFont();
-        font.setFontName("Arial"); // Thiết lập font là Times New Roman
+        font.setFontName("Arial");
         font.setFontHeightInPoints((short) 11);
         CellStyle cellStyle = workbook.createCellStyle();
         cellStyle.setFont(font);
-        cellStyle.setBorderTop(BorderStyle.THIN);      // Viền trên
-        cellStyle.setBorderBottom(BorderStyle.THIN);   // Viền dưới
-        cellStyle.setBorderLeft(BorderStyle.THIN);     // Viền trái
-        cellStyle.setBorderRight(BorderStyle.THIN);    //
-        // Căn giữa theo chiều ngang và chiều dọc
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
         cellStyle.setAlignment(HorizontalAlignment.CENTER);
         cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
         cellStyle.setWrapText(true);
@@ -302,15 +517,14 @@ public class HomeController {
 
     private static CellStyle getCelStyleForData(XSSFWorkbook workbook) {
         Font font = workbook.createFont();
-        font.setFontName("Arial"); // Thiết lập font là Times New Roman
-//        font.setFontHeightInPoints((short) 11);
+        font.setFontName("Arial");
         CellStyle cellStyle2 = workbook.createCellStyle();
         cellStyle2.setFont(font);
         cellStyle2.setAlignment(HorizontalAlignment.LEFT);
         cellStyle2.setWrapText(true);
-        cellStyle2.setBorderTop(BorderStyle.THIN);      // Viền trên
-        cellStyle2.setBorderBottom(BorderStyle.THIN);   // Viền dưới
-        cellStyle2.setBorderLeft(BorderStyle.THIN);     // Viền trái
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
         cellStyle2.setBorderRight(BorderStyle.THIN);
         return cellStyle2;
     }

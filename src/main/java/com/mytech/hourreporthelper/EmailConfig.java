@@ -1,7 +1,5 @@
 package com.mytech.hourreporthelper;
 
-import org.springframework.web.multipart.MultipartFile;
-
 public class EmailConfig {
     // Fix cứng thông tin SMTP server
     private final String smtpServer = "gw.ksystem.vn";
@@ -14,7 +12,6 @@ public class EmailConfig {
     private String subject = "Auto Send Report";
     private String message = "Đây là email tự động gửi báo cáo.";
     private String displayName = "Le Viet Dong (HCM)";
-    private MultipartFile excelFile;
 
     public EmailConfig() {
     }
@@ -81,13 +78,5 @@ public class EmailConfig {
 
     public void setMessage(String message) {
         this.message = message;
-    }
-
-    public MultipartFile getExcelFile() {
-        return excelFile;
-    }
-
-    public void setExcelFile(MultipartFile excelFile) {
-        this.excelFile = excelFile;
     }
 } 
